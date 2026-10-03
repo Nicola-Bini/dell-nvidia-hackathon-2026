@@ -7,6 +7,7 @@
 | Challenge | "Ship an always-on AI agent running fully local on the Dell Pro Max with GB10" |
 | Status | Draft v1, written 3 October 2026 from the whiteboard session and verified web research |
 | Companion | [SCHEMA.md](SCHEMA.md): database, catalog, and wire contracts for scaffolding |
+| Research | [research/](research/README.md): the six fact-checked research reports behind this document |
 
 ## 1. Summary
 
