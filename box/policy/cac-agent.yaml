@@ -1,0 +1,39 @@
+# OpenShell network policy preset for the CAC agent sandbox (deny by default).
+# The agent may reach exactly two things on the host: the Owner tools API (8081) and the
+# model proxy NemoClaw publishes for inference (11435). The owner channel is the local
+# dashboard, a gateway forward into the sandbox, so it needs no egress rule.
+# Apply: nemoclaw <sandbox> policy-add  (or openshell policy set) with this file.
+preset:
+  name: cac-agent
+  description: "CAC agent: Owner tools API and local model only"
+
+network_policies:
+  cac_owner_api:
+    name: cac_owner_api
+    endpoints:
+      - host: host.openshell.internal
+        port: 8081
+        protocol: rest
+        enforcement: enforce
+        allowed_ips: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]
+        rules:
+          - allow: { method: GET, path: "/owner/**" }
+          - allow: { method: POST, path: "/owner/**" }
+    binaries:
+      - { path: /usr/bin/python3 }
+      - { path: /usr/bin/curl }
+  cac_model:
+    name: cac_model
+    endpoints:
+      - host: host.openshell.internal
+        port: 11435
+        protocol: rest
+        enforcement: enforce
+        allowed_ips: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]
+        rules:
+          - allow: { method: GET, path: "/v1/models" }
+          - allow: { method: POST, path: "/v1/chat/completions" }
+    binaries:
+      - { path: /usr/local/bin/openclaw }
+      - { path: /usr/local/bin/node }
+      - { path: /usr/bin/node }
