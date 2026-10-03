@@ -6,10 +6,10 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 |---|---|---|---|
 | wp1 | merged | [#3](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/3) | `box/checks.sh` -> ALL CHECKS PASSED (embedder WARN, decision below) |
 | wp2 | merged | [#4](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/4) | `uv run bench/selection_bench.py` -> median 0.25 s, p95 0.30 s at 1; 0.96/1.07 at 4 |
-| wp3 | blocked | — | needs the NemoClaw lock (interactive onboard running, see Blocked on) |
-| wp4 | merged, proven on real APIs | [#7](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/7), this PR | `box/demo_reset.sh && python3 -m unittest discover -s agent/tests -v` -> 3 OK against je's Owner API and the real Serve API on the box (15:45 ET): parking asked, answered, published, and "is there parking near you?" returns the owner's words; gift-card plan -> pending create_label, 2 create_node, create_component |
+| wp3 | partial: agent runs in the sandbox, hello not yet sent | this PR | `box/agent_install.sh` -> the sandboxed agent reads `/owner/digest` from je's API; `hermes chat -q` turn with one tool call: 23.7 s cold, **7.0 s warm**. Telegram hello: the owner sends it (see Blocked on) |
+| wp4 | merged, proven on real APIs | [#7](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/7), [#23](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/23) | `box/demo_reset.sh && python3 -m unittest discover -s agent/tests -v` -> 3 OK against je's Owner API and the real Serve API on the box (15:45 ET): parking asked, answered, published, and "is there parking near you?" returns the owner's words; gift-card plan -> pending create_label, 2 create_node, create_component |
 | wp5 | partial | [#12](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/12) | `box/up.sh` -> ALL UP on the real stack (postgres, seed, model, owner, serve). Sandbox parts (`box/egress_demo.sh`, `box/recover.sh`, policy apply) unproven: need the NemoClaw lock |
-| wp6 | partial: deployed, load-tested | this PR | `box/up.sh` -> ALL UP; `uv run bench/load_test.py -n 24` -> table below, 0 errors at 4 concurrent. Agent-turn-in-flight row waits on wp3 |
+| wp6 | partial: deployed, load-tested | [#23](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/23) | `box/up.sh` -> ALL UP; `uv run bench/load_test.py -n 24` -> table below, 0 errors at 4 concurrent. Agent-turn-in-flight row waits on wp3 |
 
 ## Measured numbers
 
@@ -49,6 +49,17 @@ Box: Dell GB10, aarch64, 121 GB unified memory (about 89 GB available with qwen3
 
 ## Decisions
 
+- Agent sandbox is `blake3` (owner's call, 15:55): NemoClaw with the **Hermes** runtime, not
+  OpenClaw; owner channel is **Telegram** (cut line 5 in effect). `box/agent_install.sh`
+  uploads `agent/` to `/sandbox/agent`, the skill to `~/.hermes/skills/cac-owner`, appends
+  `agent/INSTRUCTIONS.md` to `SOUL.md` under a `<!-- CAC -->` marker (idempotent), writes
+  `agent.env` (mode 600, git-ignored) and adds OpenShell rule `cac_owner_api`: only
+  GET/POST `/owner/**` on `host.openshell.internal:8081`. Policy version 4 is live.
+- The agent's model goes through NemoClaw to Ollama, so Ollama loads a second copy of
+  qwen3.6:35b beside llama-server's (22 GB each; 31 GB still free, above the 16 GB floor).
+  Ollama's crash affects agent turns, not visitors; an agent turn is retried on the next
+  heartbeat.
+
 - Serve's model is `llama-server` on :11436 (above). `box/up.sh` starts it via `box/model.sh`.
   Ollama keeps serving the NemoClaw sandbox; it holds no model until the agent calls it.
 - Embedder: none installed and no model downloads at the venue, so full-text fallback:
@@ -75,5 +86,6 @@ Box: Dell GB10, aarch64, 121 GB unified memory (about 89 GB available with qwen3
 
 ## Blocked on
 
-- Nothing blocking. Onboarding finished (about 15:50): sandbox `blake3`, agent runtime
-  **hermes** (not OpenClaw), policies pypi, tavily, telegram, dashboard port 18789. wp3 next.
+- wp3 hello on Telegram: sending a message to the owner's account was refused by the agent's
+  permission guard; the owner sends it once (command in the 16:05 handoff), then the agent
+  can use `hermes send -t telegram:<owner id>`.
