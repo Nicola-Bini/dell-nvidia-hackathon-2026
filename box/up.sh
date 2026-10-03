@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Start order from SCHEMA section 2, each step gated on a health check.
 # Postgres, model server, Owner tools API, Serve API, then (P1) MCP. Exits non-zero on the
-# first unhealthy step. Override start commands with OWNER_CMD / SERVE_CMD / MCP_CMD.
+# first unhealthy P0 step. Override start commands with OWNER_CMD / SERVE_CMD / MCP_CMD.
 set -u
 . "$(dirname "$0")/lib.sh"
 rc=0
@@ -34,6 +34,19 @@ done
 serve_cmd=(${SERVE_CMD:-make serve SERVE_HOST=0.0.0.0})
 step serve "http://127.0.0.1:$SERVE_PORT/healthz" 60 "${serve_cmd[@]}" || exit 1
 
-if [ -n "${MCP_CMD:-}" ]; then step mcp "http://127.0.0.1:8090/health" 30 $MCP_CMD || rc=1; fi
+# MCP server (P1, Flow 2). Never fails the start: Flow 1 and Flow 3 do not depend on it.
+# It serves the element once apps/widget/dist-mcp/surface.html exists, text-only before.
+MCP_PORT="${MCP_PORT:-8090}"
+if [ -d services/mcp ] && command -v npm >/dev/null; then
+  if [ -d apps/widget/node_modules ] && [ ! -f apps/widget/dist-mcp/surface.html ]; then
+    (cd apps/widget && npm run -s --if-present build:mcp) >"$LOGDIR/build-widget-mcp.log" 2>&1
+  fi
+  [ -d services/mcp/node_modules ] \
+    || (cd services/mcp && npm ci --silent) >"$LOGDIR/build-mcp.log" 2>&1
+  mcp_cmd=(${MCP_CMD:-env MCP_PORT=$MCP_PORT SERVE_BASE_URL=http://127.0.0.1:$SERVE_PORT
+    npm --prefix services/mcp run -s start})
+  step mcp "http://127.0.0.1:$MCP_PORT/health" 30 "${mcp_cmd[@]}" \
+    || echo "WARN mcp not up (see $LOGDIR/mcp.log); Flow 2 only"
+fi
 [ $rc -eq 0 ] && echo "ALL UP"
 exit $rc

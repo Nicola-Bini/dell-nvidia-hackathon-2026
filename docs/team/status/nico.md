@@ -10,9 +10,9 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 | wp4 | merged, proven on real APIs | [#7](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/7), [#23](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/23) | `box/demo_reset.sh && python3 -m unittest discover -s agent/tests -v` -> 3 OK against je's Owner API and the real Serve API on the box (15:45 ET): parking asked, answered, published, and "is there parking near you?" returns the owner's words; gift-card plan -> pending create_label, 2 create_node, create_component |
 | wp5 | partial: egress and recovery proven; 5-minute heartbeat not scheduled | [#27](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/27) | `box/egress_demo.sh` -> 7 PASS (16:10 ET): `/owner/**` allowed; `/openapi.json` on the same port, example.com, github.com, the database, the Serve API and the model server all refused. `box/recover.sh` after killing the Owner API, Serve API and llama-server -> ALL UP in 24 s |
 | wp6 | partial: deployed, load-tested | [#23](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/23), [#28](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/28) | `box/up.sh` -> ALL UP; `uv run bench/load_test.py -n 24` -> table below, 0 errors at 4 concurrent. Agent-turn-in-flight row missing (needs the sandbox) |
-| wp7 (P1) | not started | — | only after the 18:30 gate |
+| wp7 (P1) | partial: server built and proven on a laptop, text-only; not on the box, no element, no tunnel | [#30](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/30) | `cd services/mcp && npm test` -> 10 pass, `npm run typecheck` clean. Live against the real Serve API on a laptop (16:30 ET): `request_booking` -> lead stored with channel `mcp`; `MCP_BASE_URL=... scripts/canary.py` -> 40 prompts, 89 responses, canary and goals in none. From Claude: not run (needs the tunnel and the connector, a person) |
 
-## Still missing (16:30 ET)
+## Still missing (16:35 ET)
 
 In order. Each line says who it waits on.
 
@@ -32,7 +32,14 @@ In order. Each line says who it waits on.
    `uv run bench/load_test.py --agent-cmd "box/agent_turn.sh digest"`.
 5. **18:30 gate**, Flow 1 and Flow 3 acceptance on the box: Flow 1 passes now (the widget
    and site are served from the box's LAN address); Flow 3 waits on 1.
-6. **wp7 (P1) MCP server:** after the 18:30 gate.
+6. **wp7 (P1) MCP server**, built ahead of the gate on a laptop so only box work is left:
+   a. On the box: `git pull`, `box/up.sh` (now starts it on `:8090`, as a WARN-only step).
+      Not yet run there.
+   b. The element: waits on cj's wp6 (`npm run build:mcp` -> `apps/widget/dist-mcp/
+      surface.html`). Until then `ask_restaurant` is text-only (cut line 1); the server
+      picks the file up with no restart.
+   c. The tunnel and the Claude connector: a person (steps in `services/mcp/README.md`).
+      After the 18:30 gate.
 
 ## 17:00 gate: both loops on the box, run by the sandboxed agent (16:20 ET): PASS
 
@@ -86,6 +93,23 @@ Box: Dell GB10, aarch64, 121 GB unified memory (about 89 GB available with qwen3
 
 ## Decisions
 
+- wp7 was written before the 18:30 gate, on Blake's laptop (16:30 ET), because items 1 to 5
+  above all wait on the sandbox and on Nico at the box, and nothing else in the lane could
+  move. It touched nothing on the box. Deploying it, the tunnel and the connector still wait
+  for the gate.
+- MCP server: every tool call is its own anonymous session (`mcp_<uuid>`), since an assistant
+  sends no visitor id; the Serve API's channel cap (10 leads an hour on `mcp`) is the limit
+  that applies. It logs tool, outcome and milliseconds only. It refuses to start unless
+  `SERVE_BASE_URL` is loopback. A public Host reaches `/mcp` only; `/health` is local.
+- `ask_restaurant`'s description leaves out "(Cambridge, MA)": `/v1/bootstrap` gives name and
+  tagline only, and the Kenmore is in Boston. `get_business_profile` returns what the public
+  API has: name, tagline, services (the nav) and hours. Cuisine, address and price range are
+  not in any Serve API response.
+- `submit_form` (FormCard, for example the gift-card form) has no MCP tool in SCHEMA 8.7, so
+  in the MCP App build those forms cannot submit. cj: hide the submit or show "on the site".
+- `box/up.sh`: the MCP step warns and never fails the start, so a P1 fault cannot break the
+  `box/recover.sh` proof.
+
 - Heartbeat turns use one explicit command per prompt (`agent/HEARTBEAT.md`). A free-form
   "do move 1" turn wandered for 79 s, ran out of turns and tried hand-built changes (all
   refused, nothing written). Explicit prompts take 6 to 11 s.
@@ -134,3 +158,6 @@ Box: Dell GB10, aarch64, 121 GB unified memory (about 89 GB available with qwen3
 ## Blocked on
 
 - Items 1 and 2 of "Still missing": both need Nico (sandbox onboarding, first Telegram message).
+- NEED_INPUT: how does a laptop reach the box (`ssh` target for `CAC_BOX_SSH`)? Without it
+  items 1 to 5 and 6a can only be done by the person at the box.
+- 6c: tunnel sign-in and adding the Claude connector (a person), after the 18:30 gate.
