@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 
 from app.infra.common_shim import Settings, get_settings
-from app.routes import health, owner_only
+from app.routes import health, owner_only, reads
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -16,6 +16,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings or get_settings()
     app.include_router(health.router)
     app.include_router(owner_only.router)
+    app.include_router(reads.router)
     return app
 
 
