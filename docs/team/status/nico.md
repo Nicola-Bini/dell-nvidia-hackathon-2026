@@ -6,10 +6,33 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 |---|---|---|---|
 | wp1 | merged | [#3](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/3) | `box/checks.sh` -> ALL CHECKS PASSED (embedder WARN, decision below) |
 | wp2 | merged | [#4](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/4) | `uv run bench/selection_bench.py` -> median 0.25 s, p95 0.30 s at 1; 0.96/1.07 at 4 |
-| wp3 | partial: agent runs in the sandbox, hello not yet sent | this PR | `box/agent_install.sh` -> the sandboxed agent reads `/owner/digest` from je's API; `hermes chat -q` turn with one tool call: 23.7 s cold, **7.0 s warm**. Telegram hello: the owner sends it (see Blocked on) |
+| wp3 | partial: agent ran in the sandbox; sandbox since lost; hello not sent | [#24](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/24) | `box/agent_install.sh` -> the sandboxed agent reads `/owner/digest` from je's API; `hermes chat -q` turn with one tool call: 23.7 s cold, **7.0 s warm**. Telegram hello: the owner sends it (see Blocked on) |
 | wp4 | merged, proven on real APIs | [#7](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/7), [#23](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/23) | `box/demo_reset.sh && python3 -m unittest discover -s agent/tests -v` -> 3 OK against je's Owner API and the real Serve API on the box (15:45 ET): parking asked, answered, published, and "is there parking near you?" returns the owner's words; gift-card plan -> pending create_label, 2 create_node, create_component |
-| wp5 | sandbox proofs pass; digest heartbeat pending | this PR | `box/egress_demo.sh` -> 7 PASS (16:10 ET): `/owner/**` allowed; `/openapi.json` on the same port, example.com, github.com, the database, the Serve API and the model server all refused. `box/recover.sh` after killing the Owner API, Serve API and llama-server -> ALL UP in 24 s |
-| wp6 | partial: deployed, load-tested | [#23](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/23) | `box/up.sh` -> ALL UP; `uv run bench/load_test.py -n 24` -> table below, 0 errors at 4 concurrent. Agent-turn-in-flight row waits on wp3 |
+| wp5 | partial: egress and recovery proven; 5-minute heartbeat not scheduled | [#27](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/27) | `box/egress_demo.sh` -> 7 PASS (16:10 ET): `/owner/**` allowed; `/openapi.json` on the same port, example.com, github.com, the database, the Serve API and the model server all refused. `box/recover.sh` after killing the Owner API, Serve API and llama-server -> ALL UP in 24 s |
+| wp6 | partial: deployed, load-tested | [#23](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/23), [#28](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/28) | `box/up.sh` -> ALL UP; `uv run bench/load_test.py -n 24` -> table below, 0 errors at 4 concurrent. Agent-turn-in-flight row missing (needs the sandbox) |
+| wp7 (P1) | not started | — | only after the 18:30 gate |
+
+## Still missing (16:30 ET)
+
+In order. Each line says who it waits on.
+
+1. **The agent sandbox is gone.** At 16:22 `nemoclaw blake3 rebuild` failed ("Rebuild
+   recreate failed"); `nemoclaw list` shows no sandboxes (backup in
+   `~/.nemoclaw/rebuild-backups/blake3`). Waits on Nico: onboard again (Hermes, Telegram).
+   Then `box/agent_install.sh` puts the skill, instructions and the `/owner/**` network
+   rule back in one command. Everything below the sandbox (Postgres, model, Owner API,
+   Serve API) is up and unaffected.
+2. **wp3: "hello" on the owner channel (Telegram).** The agent's permission guard refuses to
+   message a real account, so Nico sends the first one from the sandbox:
+   `hermes send -t telegram:<owner user id> "Hello from your CAC agent"`.
+3. **wp5: the 5-minute heartbeat** (digest, then move 1, then move 2 from
+   `agent/HEARTBEAT.md`) is not scheduled in Hermes cron. It delivers to Telegram, so it
+   waits on 1 and 2.
+4. **wp6: load-test row with an agent turn in flight.** Waits on 1:
+   `uv run bench/load_test.py --agent-cmd "box/agent_turn.sh digest"`.
+5. **18:30 gate**, Flow 1 and Flow 3 acceptance on the box: Flow 1 passes now (the widget
+   and site are served from the box's LAN address); Flow 3 waits on 1.
+6. **wp7 (P1) MCP server:** after the 18:30 gate.
 
 ## 17:00 gate: both loops on the box, run by the sandboxed agent (16:20 ET): PASS
 
@@ -110,6 +133,4 @@ Box: Dell GB10, aarch64, 121 GB unified memory (about 89 GB available with qwen3
 
 ## Blocked on
 
-- wp3 hello on Telegram: sending a message to the owner's account was refused by the agent's
-  permission guard; the owner sends it once (command in the 16:05 handoff), then the agent
-  can use `hermes send -t telegram:<owner id>`.
+- Items 1 and 2 of "Still missing": both need Nico (sandbox onboarding, first Telegram message).
