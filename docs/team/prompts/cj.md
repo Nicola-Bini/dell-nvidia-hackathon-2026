@@ -10,6 +10,9 @@ true. In an agent without `/goal`, delete the word `/goal` and paste the rest.
 If the session ends or runs out of usage, start a new one and paste the same prompt: it
 picks up from `docs/team/status/cj.md` and what is on `origin/main`.
 
+To target one package, a gate or the freeze instead, use the separate prompts in
+[cj-packages.md](cj-packages.md).
+
 ````text
 /goal Every P0 work package in docs/team/lanes/cj.md is merged into origin/main through a pull request; each package's proof command was run in this session against the latest origin/main and passed; tools/lane-check passes; and docs/team/status/cj.md on origin/main lists every package with its PR link and proof result. Not met while any P0 package is unmerged or any proof fails. Also met if `TZ=America/New_York date` shows a time after 20:00 and the status file records what was cut and why.
 

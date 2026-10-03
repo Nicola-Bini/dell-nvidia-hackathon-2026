@@ -12,14 +12,15 @@ Pro Max with GB10. Built at the Dell x NVIDIA AI Hackathon, Boston, 3 October 20
 ## Start building
 
 Each person pastes their start prompt into their coding agent. The prompt clones the repo
-if needed, sets it up, and builds that person's lane.
+if needed, sets it up, and builds that person's lane. The per-package prompts restart one
+package, a gate (17:00, 18:30) or the freeze (20:00) in a fresh session.
 
-| Person | Lane | Prompt | Work packages |
-|---|---|---|---|
-| Blake | Graph, pipeline, integration | [prompts/blake.md](docs/team/prompts/blake.md) | [lanes/blake.md](docs/team/lanes/blake.md) |
-| Je | Owner tools API and inbox | [prompts/je.md](docs/team/prompts/je.md) | [lanes/je.md](docs/team/lanes/je.md) |
-| CJ | Widget, demo site, overlay | [prompts/cj.md](docs/team/prompts/cj.md) | [lanes/cj.md](docs/team/lanes/cj.md) |
-| Nico | The box, the agent, MCP | [prompts/nico.md](docs/team/prompts/nico.md) | [lanes/nico.md](docs/team/lanes/nico.md) |
+| Person | Lane | Start prompt | Per-package prompts | Work packages |
+|---|---|---|---|---|
+| Blake | Graph, pipeline, integration | [prompts/blake.md](docs/team/prompts/blake.md) | [blake-packages.md](docs/team/prompts/blake-packages.md) | [lanes/blake.md](docs/team/lanes/blake.md) |
+| Je | Owner tools API and inbox | [prompts/je.md](docs/team/prompts/je.md) | [je-packages.md](docs/team/prompts/je-packages.md) | [lanes/je.md](docs/team/lanes/je.md) |
+| CJ | Widget, demo site, overlay | [prompts/cj.md](docs/team/prompts/cj.md) | [cj-packages.md](docs/team/prompts/cj-packages.md) | [lanes/cj.md](docs/team/lanes/cj.md) |
+| Nico | The box, the agent, MCP | [prompts/nico.md](docs/team/prompts/nico.md) | [nico-packages.md](docs/team/prompts/nico-packages.md) | [lanes/nico.md](docs/team/lanes/nico.md) |
 
 ## By hand
 

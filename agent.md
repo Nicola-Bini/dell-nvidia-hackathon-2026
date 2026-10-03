@@ -10,6 +10,7 @@ lane, or the loop changes.
 | Seams between lanes | [docs/team/OWNERSHIP.md](docs/team/OWNERSHIP.md) | The interfaces lanes build against |
 | Work packages | `docs/team/lanes/<lane>.md` | Ordered packages, each with a proof command, gates and cut lines |
 | Start prompts | `docs/team/prompts/<lane>.md` | One paste per person: a `/goal` condition, setup, then the loop |
+| Per-package prompts | `docs/team/prompts/<lane>-packages.md` | One `/goal` prompt per work package plus 17:00 gate, 18:30 gate and freeze prompts; generated from the lane files, so regenerate after changing a package row |
 | Progress | `docs/team/status/<lane>.md` | Written by each lane's agent in every PR |
 | Requests | `docs/team/requests/` | How one lane asks another for a change |
 
@@ -20,3 +21,4 @@ and is documented there by the `nico` lane.
 
 - 2026-10-03: initial harness. Four lanes (`blake`, `je`, `cj`, `nico`), one `/goal`
   prompt each, self-merged squash PRs gated by `tools/lane-check` and the package proof.
+- 2026-10-03: added per-package, gate and freeze prompts for every lane.
