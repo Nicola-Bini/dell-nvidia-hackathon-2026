@@ -29,8 +29,10 @@ def test_nicos_gift_card_plan_goes_through_in_balanced_mode(client, db):
                       " AND id <> 'ui_faq'").fetchone()
     assert comp["id"] == "ui_gift_card_request" and comp["name"] == "GiftCardRequest"
     assert comp["props"]["primitive"] == "FormCard"
-    assert [f["name"] for f in comp["props"]["fields"]] == ["name", "email", "amount"]
-    assert comp["props"]["submit_label"] == "Request a gift card"
+    form = next(c for c in plan["changes"] if c["action"] == "create_component")["after"]
+    wanted = [f if isinstance(f, str) else f["name"] for f in form["fields"]]
+    assert [f["name"] for f in comp["props"]["fields"]] == wanted
+    assert comp["props"]["submit_label"] == (form.get("submit") or form.get("submit_label"))
 
 
 def test_string_evidence_is_stored_as_an_object(client, db):
