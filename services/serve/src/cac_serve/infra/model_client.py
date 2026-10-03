@@ -79,3 +79,16 @@ def complete(messages: list[dict], schema: dict) -> str:
     if not isinstance(content, str):
         raise ModelError("empty completion")
     return content
+
+
+def warm_up(timeout_s: float = 120.0) -> bool:
+    """Load the model into memory so the first visitor does not pay the cold start (a cold
+    load can exceed the 6 s request timeout). Not counted in the metrics. Never raises."""
+    settings = get_settings()
+    body = {"model": settings.llm_model, "max_tokens": 1, "temperature": 0,
+            "messages": [{"role": "user", "content": "ok"}], "reasoning_effort": "none"}
+    try:
+        url = f"{settings.llm_base_url.rstrip('/')}/chat/completions"
+        return httpx.post(url, json=body, timeout=timeout_s).status_code == 200
+    except httpx.HTTPError:
+        return False

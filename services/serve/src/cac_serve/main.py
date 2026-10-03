@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import threading
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -12,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from psycopg_pool import PoolTimeout
 
-from cac_serve.infra import db
+from cac_serve.infra import db, model_client
 from cac_serve.infra.startup_checks import assert_local
 from cac_serve.routes import health, static, v1
 from cac_serve.services.pipeline import GraphNotPublished
@@ -40,6 +42,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         db.open_pool(settings.serve_database_url, min_size=1, max_size=8)
+        if os.environ.get("CAC_WARMUP", "1") != "0":
+            threading.Thread(target=model_client.warm_up, daemon=True).start()
         try:
             yield
         finally:

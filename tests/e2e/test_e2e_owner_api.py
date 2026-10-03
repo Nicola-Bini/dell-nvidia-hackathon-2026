@@ -248,7 +248,8 @@ def test_agent_adds_an_element(serve, owner, owner_db, session_id):
         approve(owner, change_id)
     form_change = pending(owner.change("create_component", FORM_ID, GIFT_FORM))
     assert components(ask(serve, GIFT_QUESTION, session_id))[0] == "ListCard"
-    assert "FormCard" not in components(ask(serve, GIFT_QUESTION, session_id))
+    shown = ask(serve, GIFT_QUESTION, session_id)  # a model may add another approved form
+    assert all(view["data"].get("form") != FORM_ID for view in shown["views"])
 
     version = approve(owner, form_change)
 

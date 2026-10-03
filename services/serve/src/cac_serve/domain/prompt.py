@@ -40,10 +40,12 @@ A diet question sets "diet". A category or kind of item (burgers, sours, red win
 "section" to the matching MenuSection id, never a list of items. Only an item the visitor \
 names goes in "items". Leave the other filters null or []. "order" is true only when the \
 visitor wants to order, pick up or take out; asking what is available is false.
-8. Another line in <data> answers it: FactCard for one node, or ListCard for several nodes \
-of one label (add a FormCard when a form matches).
-9. About this business, but no rule above fits or <data> does not contain the answer: \
-{"kind":"gap","topic":"<short noun phrase>"}.
+8. Other lines in <data> answer it: when <data> has several nodes of one label, use \
+ListCard with that label, and add a FormCard as a second view when a form in Components \
+matches. Use FactCard only for a question about one specific node.
+9. About this business, but no rule above fits or <data> has no line for what was asked \
+(a dish, a service or a fact that is not listed): \
+{"kind":"gap","topic":"<short noun phrase>"}. Never answer with a list of unrelated items.
 10. Not about this business (jokes, weather, general knowledge): {"kind":"off_topic"}.
 Prefer an answer over a gap whenever a rule from 1 to 8 fits.
 
@@ -63,6 +65,10 @@ table for two tomorrow -> {"kind":"answer","views":[{"component":"BookingForm"}]
 can you cater lunch for 30? -> {"kind":"answer","views":[{"component":"CateringQuoteForm"}]}
 I'm allergic to shellfish -> {"kind":"answer","views":[{"component":"AllergenNotice",\
 "allergen":"alg_shellfish"}]}
+do you sell gift cards? -> {"kind":"answer","views":[{"component":"ListCard",\
+"label":"GiftCard"},{"component":"FormCard","form":"ui_form_gift_card"}]}
+do you have gluten-free pasta? (no pasta in <data>) -> {"kind":"gap",\
+"topic":"gluten-free pasta"}
 is there a dress code? -> {"kind":"gap","topic":"dress code"}
 what's the weather? -> {"kind":"off_topic"}"""
 
