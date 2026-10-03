@@ -3,7 +3,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app.infra.common_shim import Settings
+from cac_common.settings import Settings, load_settings
 from app.main import create_app
 
 AGENT = {"Authorization": "Bearer agent-secret"}
@@ -11,13 +11,9 @@ OWNER = {"Authorization": "Bearer owner-secret"}
 
 
 def make_settings(**kw) -> Settings:
-    base = dict(business_id="biz_demo", tz="America/New_York", owner_database_url="",
-                embed_base_url="", embed_model="m", embed_dim=1024,
-                serve_base_url="http://127.0.0.1:1", owner_tools_token="agent-secret",
-                owner_inbox_token="owner-secret", owner_channel_user_id="owner",
-                autonomy="balanced", gap_ask_min_sessions=1)
-    base.update(kw)
-    return Settings(**base)
+    env = {"OWNER_TOOLS_TOKEN": "agent-secret", "OWNER_INBOX_TOKEN": "owner-secret"}
+    env.update({k.upper(): v for k, v in kw.items()})
+    return load_settings(env)
 
 
 @pytest.fixture()

@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "CAC Owner tools API and owner inbox (lane je)"
 requires-python = ">=3.12"
 dependencies = [
+    "cac-common",
     "fastapi>=0.142.2",
     "httpx>=0.28.1",
     "psycopg[binary]>=3.3.6",
@@ -21,3 +22,6 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.uv.sources]
+cac-common = { path = "../../packages/cac_common", editable = true }

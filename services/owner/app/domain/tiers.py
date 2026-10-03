@@ -118,12 +118,12 @@ def _sets_verified(after: dict) -> bool:
     return isinstance(props, dict) and any(props.get(f) for f in VERIFY_FIELDS)
 
 
-def _is_locked_label(name: str | None) -> bool:
+def is_locked_label(name: str | None) -> bool:
     return bool(name) and name.lower() in {x.lower() for x in LOCKED_LABELS}
 
 
 def _create_label(state: TargetState, after: dict) -> Kind:
-    if _is_locked_label(state.label) or state.label_locked:
+    if is_locked_label(state.label) or state.label_locked:
         return Kind.MAKE_PUBLIC if after.get("locked") is False else Kind.LOCKED_DATA
     if state.label_exists and not state.label_public and after.get("may_be_public"):
         return Kind.MAKE_PUBLIC
@@ -131,7 +131,7 @@ def _create_label(state: TargetState, after: dict) -> Kind:
 
 
 def _add_prop(state: TargetState, after: dict) -> Kind:
-    if _is_locked_label(state.label) or state.label_locked:
+    if is_locked_label(state.label) or state.label_locked:
         return Kind.LOCKED_DATA
     if after.get("may_be_public") and not state.label_public:
         return Kind.MAKE_PUBLIC
@@ -144,8 +144,8 @@ def _create_edge_type(state: TargetState, after: dict) -> Kind:
 
 def _node_locked(node: NodeState | None, state: TargetState) -> bool:
     if node is None:
-        return _is_locked_label(state.label) or state.label_locked
-    return node.locked or _is_locked_label(node.label)
+        return is_locked_label(state.label) or state.label_locked
+    return node.locked or is_locked_label(node.label)
 
 
 def _create_node(state: TargetState, after: dict) -> Kind:
@@ -177,7 +177,7 @@ def _retire_node(state: TargetState, after: dict) -> Kind:
 
 def _edge_kind(state: TargetState) -> Kind:
     ends = (state.src, state.dst)
-    if any(n is not None and (n.locked or _is_locked_label(n.label)) for n in ends):
+    if any(n is not None and (n.locked or is_locked_label(n.label)) for n in ends):
         return Kind.LOCKED_DATA
     if not all(n is not None and n.public for n in ends):
         return Kind.PRIVATE

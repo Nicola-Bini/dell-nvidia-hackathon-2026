@@ -40,3 +40,13 @@ def require_owner(who: Principal = Depends(principal)) -> Principal:
                     "reason": "Only the owner's inbox credential can do this. "
                               "The agent cannot approve, reject, revert or verify."})
     return who
+
+
+def require_agent(who: Principal = Depends(principal)) -> Principal:
+    if who != "agent":
+        raise HTTPException(
+            status_code=403,
+            detail={"tier": "locked",
+                    "reason": "Changes are submitted with the agent's tools token. The "
+                              "owner decides through the inbox, not through this route."})
+    return who
