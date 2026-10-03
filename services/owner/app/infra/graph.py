@@ -55,10 +55,12 @@ def insert_node(conn, biz: str, node_id: str, node: dict, status: str) -> None:
          node["visibility"], status))
 
 
-def update_node(conn, node_id: str, name: str, props: dict, visibility: str, status: str) -> None:
+def update_node(conn, node_id: str, values: dict) -> None:
+    """Set name, props, visibility and status from `values` (all four keys)."""
     conn.execute(
         "UPDATE kg.node SET name = %s, props = %s, visibility = %s, status = %s,"
-        " updated_at = now() WHERE id = %s", (name, Jsonb(props), visibility, status, node_id))
+        " updated_at = now() WHERE id = %s",
+        (values["name"], Jsonb(values["props"]), values["visibility"], values["status"], node_id))
 
 
 def set_node_status(conn, node_id: str, status: str) -> None:

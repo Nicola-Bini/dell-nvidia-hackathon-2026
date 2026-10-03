@@ -7,12 +7,13 @@ change is recorded as refused and never touches the graph.
 from dataclasses import dataclass
 
 import psycopg
-from cac_common.graph import publish, reindex_node
+from cac_common.graph import reindex_node
 from cac_common.settings import Settings
 from psycopg.types.json import Jsonb
 
 from app.domain.requests import ChangeRequest
 from app.domain.tiers import Kind, TierDecision, assign_tier
+from app.services import publisher
 from app.services.appliers import HANDLERS, Written
 
 
@@ -33,17 +34,26 @@ class Submitted:
         return out
 
 
-def record_change(conn: psycopg.Connection, biz: str, req: ChangeRequest, target: str,
-                  before: dict | None, decision: TierDecision, state: str) -> int:
+@dataclass(frozen=True)
+class Plan:
+    """What the engine decided about a request before writing anything."""
+
+    target: str
+    before: dict | None
+    decision: TierDecision
+
+
+def record_change(conn: psycopg.Connection, biz: str, req: ChangeRequest, plan: Plan,
+                  state: str) -> int:
     evidence = dict(req.evidence)
-    if decision.tier == "locked":
-        evidence["refusal"] = decision.reason
+    if plan.decision.tier == "locked":
+        evidence["refusal"] = plan.decision.reason
     row = conn.execute(
         "INSERT INTO kg.change (business_id, actor, action, target, before, after, reason,"
         " evidence, tier, state) VALUES (%s, 'agent', %s, %s, %s, %s, %s, %s, %s, %s)"
         " RETURNING id",
-        (biz, req.action, target, Jsonb(before) if before is not None else None,
-         Jsonb(req.after), req.reason, Jsonb(evidence), decision.tier, state)).fetchone()
+        (biz, req.action, plan.target, Jsonb(plan.before) if plan.before is not None else None,
+         Jsonb(req.after), req.reason, Jsonb(evidence), plan.decision.tier, state)).fetchone()
     return row["id"]
 
 
@@ -59,17 +69,17 @@ def submit(conn: psycopg.Connection, settings: Settings, req: ChangeRequest) -> 
     state = handler.state(conn, biz, req)
     decision = assign_tier(req.action, state, req.after, settings.autonomy)
     if decision.tier == "locked":
-        change_id = record_change(conn, biz, req, target, None, decision, "rejected")
+        change_id = record_change(conn, biz, req, Plan(target, None, decision), "rejected")
         return Submitted(change_id, "locked", "rejected", decision.reason)
     handler.validate(conn, biz, req, state)
     before = handler.snapshot(conn, biz, req)
     live = decision.tier == "auto"
-    change_id = record_change(conn, biz, req, target, before, decision,
+    change_id = record_change(conn, biz, req, Plan(target, before, decision),
                               "applied" if live else "pending")
     if live or handler.creates:
         reindex(conn, handler.write(conn, biz, req, "approved" if live else "draft"))
     version = None
     if live and decision.kind != Kind.PRIVATE:
-        version = publish(conn, biz)
+        version = publisher.publish_now(conn, settings)
     return Submitted(change_id, decision.tier, "applied" if live else "pending",
                      graph_version=version)

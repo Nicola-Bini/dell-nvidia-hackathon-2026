@@ -4,10 +4,11 @@ locked tier', plus every action and the tier-dependent apply paths."""
 from tests.conftest import AGENT, OWNER
 
 
-def post(client, action, target, after=None, reason="because", evidence=None, headers=AGENT):
-    return client.post("/owner/changes", headers=headers, json={
+def post(client, action, target, after=None, reason="because", **kw):
+    """POST a change as the agent. kw: evidence=, headers=."""
+    return client.post("/owner/changes", headers=kw.get("headers", AGENT), json={
         "action": action, "target": target, "after": after or {}, "reason": reason,
-        "evidence": evidence or {}})
+        "evidence": kw.get("evidence") or {}})
 
 
 def scalar(db, sql, *args):
@@ -27,7 +28,7 @@ TAG = {"src": "mi_risotto", "dst": "diet_vegetarian", "type": "SUITABLE_FOR"}
 
 def test_agent_tags_a_dish_auto_in_balanced_and_publishes_unverified(client, db):
     r = post(client, "create_edge", "mi_risotto|SUITABLE_FOR|diet_vegetarian", TAG,
-             "No meat or fish in the description", {"topic": "vegetarian", "count": 4})
+             "No meat or fish in the description", evidence={"topic": "vegetarian", "count": 4})
     assert r.status_code == 200
     body = r.json()
     assert body["tier"] == "auto" and body["state"] == "applied" and body["change_id"] > 0
@@ -115,7 +116,7 @@ def test_making_a_private_label_public_is_refused(client, db):
 def test_create_label_in_balanced_is_a_pending_draft(client, db):
     r = post(client, "create_label", "GiftCard", {"may_be_public": True,
              "public_props": ["amounts", "terms"], "description": "Gift cards"},
-             "12 visitors asked", {"topic": "gift cards", "count": 12})
+             "12 visitors asked", evidence={"topic": "gift cards", "count": 12})
     assert (r.json()["tier"], r.json()["state"]) == ("one_tap", "pending")
     row = db.execute("SELECT status, created_by, public_props FROM kg.label"
                      " WHERE label='GiftCard'").fetchone()
@@ -261,7 +262,7 @@ FORM = {"component": "GiftCardForm", "use_when": "Visitor asks about gift cards.
 
 def test_create_component_is_pending_and_lands_as_a_ui_node(client, db):
     r = post(client, "create_component", "ui_form_gift_card", FORM, "gift card demand",
-             {"topic": "gift cards", "count": 12})
+             evidence={"topic": "gift cards", "count": 12})
     assert (r.json()["tier"], r.json()["state"]) == ("one_tap", "pending")
     row = db.execute("SELECT label, status, source_type, props FROM kg.node"
                      " WHERE id='ui_form_gift_card'").fetchone()
@@ -294,7 +295,8 @@ def test_request_validation(client):
 
 
 def test_the_owner_token_is_not_the_agent_and_is_refused_here(client):
-    assert post(client, "update_node", "mi_risotto", {"name": "X"}, headers=OWNER).status_code == 403
+    r = post(client, "update_node", "mi_risotto", {"name": "X"}, headers=OWNER)
+    assert r.status_code == 403
 
 
 def test_openapi_documents_the_change_endpoint(client):

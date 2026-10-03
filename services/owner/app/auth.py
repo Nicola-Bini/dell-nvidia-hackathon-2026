@@ -1,4 +1,10 @@
-"""Two credentials (SCHEMA 8.6): the agent's tools token and the owner's inbox token."""
+"""Two credentials (SCHEMA 8.6): the agent's tools token and the owner's inbox token.
+
+The agent sends `Authorization: Bearer`. The owner's browser cannot set headers on a page
+load, so `GET /owner/inbox?token=` swaps the inbox token for an HttpOnly, SameSite=Strict
+cookie. A cookie-authenticated write must also carry `X-Requested-With: cac-inbox`, which a
+cross-site form cannot add.
+"""
 
 import hmac
 from typing import Literal
@@ -6,25 +12,33 @@ from typing import Literal
 from fastapi import Depends, HTTPException, Request
 
 Principal = Literal["agent", "owner"]
+COOKIE = "cac_inbox"
+CSRF_HEADER = ("x-requested-with", "cac-inbox")
+SAFE_METHODS = ("GET", "HEAD", "OPTIONS")
 
 
-def _presented_token(request: Request) -> str:
+def matches(presented: str, expected: str) -> bool:
+    return bool(presented and expected) and hmac.compare_digest(presented, expected)
+
+
+def _bearer(request: Request) -> str:
     header = request.headers.get("authorization", "")
-    if header.lower().startswith("bearer "):
-        return header[7:].strip()
-    # The inbox page is opened in a browser: accept ?token= or the cookie it sets.
-    return request.query_params.get("token") or request.cookies.get("cac_inbox", "")
+    return header[7:].strip() if header.lower().startswith("bearer ") else ""
 
 
 def principal(request: Request) -> Principal:
     settings = request.app.state.settings
-    token = _presented_token(request)
-    if token and settings.owner_inbox_token and hmac.compare_digest(
-            token, settings.owner_inbox_token):
+    bearer = _bearer(request)
+    if matches(bearer, settings.owner_inbox_token):
         return "owner"
-    if token and settings.owner_tools_token and hmac.compare_digest(
-            token, settings.owner_tools_token):
+    if matches(bearer, settings.owner_tools_token):
         return "agent"
+    cookie = request.cookies.get(COOKIE, "")
+    if not bearer and matches(cookie, settings.owner_inbox_token):
+        if request.method not in SAFE_METHODS and request.headers.get(CSRF_HEADER[0]) \
+                != CSRF_HEADER[1]:
+            raise HTTPException(status_code=403, detail="missing X-Requested-With header")
+        return "owner"
     raise HTTPException(status_code=401, detail="missing or unknown bearer token")
 
 

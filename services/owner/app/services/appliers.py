@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 from app.domain import requests as rq
 from app.domain.requests import ChangeError, ChangeRequest
-from app.domain.tiers import NodeState, TargetState, is_locked_label
+from app.domain.tiers import TargetState, is_locked_label
 from app.infra import graph
 
 
@@ -196,14 +196,14 @@ class UpdateNode(Handler):
     def write(self, conn, biz, req, status):
         node = _require_node(conn, req.target)
         props = {**node["props"], **rq.check_props(req.after.get("props"))}
-        graph.update_node(conn, node["id"], str(req.after.get("name", node["name"])).strip(),
-                          props, req.after.get("visibility", node["visibility"]), node["status"])
+        graph.update_node(conn, node["id"], {
+            "name": str(req.after.get("name", node["name"])).strip(), "props": props,
+            "visibility": req.after.get("visibility", node["visibility"]),
+            "status": node["status"]})
         return Written((node["id"],))
 
     def restore(self, conn, change):
-        b = change["before"]
-        graph.update_node(conn, change["target"], b["name"], b["props"], b["visibility"],
-                          b["status"])
+        graph.update_node(conn, change["target"], change["before"])
         return Written((change["target"],))
 
 
@@ -325,8 +325,9 @@ class UpdateComponent(UpdateNode):
     def write(self, conn, biz, req, status):
         node = _require_node(conn, req.target)
         entry = rq.catalog_entry(req.after, node["props"])
-        graph.update_node(conn, node["id"], entry["component"], entry, node["visibility"],
-                          node["status"])
+        graph.update_node(conn, node["id"], {
+            "name": entry["component"], "props": entry, "visibility": node["visibility"],
+            "status": node["status"]})
         return Written((node["id"],))
 
 

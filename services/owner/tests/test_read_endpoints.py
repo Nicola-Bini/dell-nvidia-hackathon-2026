@@ -2,7 +2,6 @@
 
 import json
 
-import psycopg
 from psycopg.types.json import Jsonb
 
 from tests.conftest import AGENT, OWNER

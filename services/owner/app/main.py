@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 
 from cac_common.settings import Settings, get_settings
-from app.routes import changes, health, owner_only, reads
+from app.routes import changes, health, inbox, owner_only, reads
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -18,6 +18,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(owner_only.router)
     app.include_router(reads.router)
     app.include_router(changes.router)
+    app.include_router(inbox.router)
     return app
 
 

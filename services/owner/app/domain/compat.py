@@ -22,26 +22,38 @@ def _fail(message: str) -> None:
     raise ValueError(message)
 
 
+def _node_target(target: dict, after: dict) -> str:
+    if target.get("label"):
+        after.setdefault("label", target["label"])
+    return str(target.get("node_id") or target.get("id") or _fail("target needs a node_id"))
+
+
+def _edge_target(target: dict, after: dict) -> str:
+    for key in ("src", "dst", "type"):
+        if target.get(key):
+            after.setdefault(key, target[key])
+    return "|".join((str(after.get("src", "")), str(after.get("type", "")),
+                     str(after.get("dst", ""))))
+
+
+def _component_target(target: dict, after: dict) -> str:
+    name = target.get("component") or _fail("target needs a component")
+    after.setdefault("component", name)
+    if target.get("base"):
+        after.setdefault("primitive", target["base"])
+    return target.get("id") or "ui_" + _snake(str(name))
+
+
 def _text_target(action: str, target: dict, after: dict) -> str:
     if action in ("create_label", "add_prop"):
         return str(target.get("label") or _fail("target needs a label"))
     if action == "create_edge_type":
         return str(target.get("type") or target.get("edge_type") or _fail("target needs a type"))
     if action in NODE_ACTIONS:
-        if target.get("label"):
-            after.setdefault("label", target["label"])
-        return str(target.get("node_id") or target.get("id") or _fail("target needs a node_id"))
+        return _node_target(target, after)
     if action in EDGE_ACTIONS:
-        for key in ("src", "dst", "type"):
-            if target.get(key):
-                after.setdefault(key, target[key])
-        return "|".join((str(after.get("src", "")), str(after.get("type", "")),
-                         str(after.get("dst", ""))))
-    name = target.get("component") or _fail("target needs a component")
-    after.setdefault("component", name)
-    if target.get("base"):
-        after.setdefault("primitive", target["base"])
-    return target.get("id") or "ui_" + _snake(str(name))
+        return _edge_target(target, after)
+    return _component_target(target, after)
 
 
 def _flat_props(action: str, after: dict) -> None:
