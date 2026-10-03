@@ -1,0 +1,82 @@
+/* Brand from demo/kenmore/seed.yaml: #111 background, white text, Engravers / Cormorant. */
+:root {
+  --cac-bg: #111111;
+  --cac-surface: #1c1c1c;
+  --cac-line: #333333;
+  --cac-text: #ffffff;
+  --cac-muted: #b8b8b8;
+  --cac-accent: #c9a45c;
+  --cac-ok: #6fcf97;
+  --cac-warn: #f2c94c;
+  --cac-error: #ff8a80;
+  --cac-heading: "Engravers", "Copperplate", "Cinzel", Georgia, serif;
+  --cac-body: "Cormorant Garamond", Garamond, Georgia, serif;
+  --cac-ui: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; height: 100%; }
+body { background: var(--cac-bg); color: var(--cac-text); font: 17px/1.45 var(--cac-body); }
+button, input, select, textarea { font: 15px var(--cac-ui); }
+
+.cac-panel { display: flex; flex-direction: column; height: 100%; max-width: 720px; margin: 0 auto; }
+.cac-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border-bottom: 1px solid var(--cac-line);
+}
+.cac-header h1 {
+  margin: 0; font: 600 18px var(--cac-heading); letter-spacing: 0.08em; text-transform: uppercase;
+}
+.cac-cart {
+  font: 600 14px var(--cac-ui); background: var(--cac-accent); color: #111;
+  border-radius: 999px; padding: 3px 10px;
+}
+.cac-main { flex: 1; overflow-y: auto; padding: 16px; }
+.cac-surface { display: flex; flex-direction: column; gap: 14px; }
+.cac-say { margin: 0; font-size: 19px; }
+.cac-text { margin: 0; color: var(--cac-muted); }
+.cac-status { font: 14px var(--cac-ui); color: var(--cac-muted); }
+.cac-error { color: var(--cac-error); }
+.cac-error button {
+  background: none; border: 0; color: var(--cac-accent); text-decoration: underline;
+  cursor: pointer; padding: 0;
+}
+
+.cac-footer {
+  border-top: 1px solid var(--cac-line); padding: 10px 16px 14px; display: flex;
+  flex-direction: column; gap: 10px; background: var(--cac-bg);
+}
+.cac-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+.cac-chip {
+  flex: none; border: 1px solid var(--cac-line); background: var(--cac-surface);
+  color: var(--cac-text); border-radius: 999px; padding: 6px 12px; cursor: pointer;
+}
+.cac-chip:hover { border-color: var(--cac-accent); }
+.cac-intent { display: flex; gap: 8px; }
+.cac-intent input {
+  flex: 1; min-width: 0; padding: 10px 12px; border-radius: 8px;
+  border: 1px solid var(--cac-line); background: var(--cac-surface); color: var(--cac-text);
+}
+.cac-intent button, .cac-btn {
+  padding: 10px 16px; border-radius: 8px; border: 0; cursor: pointer;
+  background: var(--cac-accent); color: #111; font-weight: 600;
+}
+.cac-intent button:disabled, .cac-btn:disabled { opacity: 0.5; cursor: default; }
+
+.cac-gallery { display: grid; gap: 24px; padding: 16px; max-width: 720px; margin: 0 auto; }
+.cac-gallery-item { border: 1px solid var(--cac-line); border-radius: 8px; padding: 12px; }
+.cac-gallery-name { font: 12px var(--cac-ui); color: var(--cac-muted); margin: 0 0 8px; }
+
+.cac-panel { position: relative; }
+.cac-overlay {
+  position: absolute; top: 52px; right: 8px; z-index: 5; width: min(300px, calc(100% - 16px));
+  background: rgba(0, 0, 0, 0.88); border: 1px solid var(--cac-accent); border-radius: 8px;
+  padding: 10px 12px; font: 13px/1.35 var(--cac-ui); color: var(--cac-text);
+}
+.cac-overlay[data-stale] { border-color: var(--cac-error); }
+.cac-overlay h2 { margin: 0 0 6px; font: 600 12px var(--cac-ui); text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--cac-accent); }
+.cac-overlay dl { margin: 0; display: grid; gap: 3px; }
+.cac-overlay dl div { display: flex; justify-content: space-between; gap: 12px; }
+.cac-overlay dt { color: var(--cac-muted); }
+.cac-overlay dd { margin: 0; font-variant-numeric: tabular-nums; text-align: right; }
