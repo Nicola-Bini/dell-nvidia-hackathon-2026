@@ -1,0 +1,15 @@
+{
+  "vegetarian options": "menu_vegetarian.json",
+  "I want to pick up something vegetarian": "menu_vegetarian_order.json",
+  "what's on draft?": "menu_draft_beer.json",
+  "I'm allergic to peanuts": "allergen_peanuts.json",
+  "are you open tonight?": "hours_saturday.json",
+  "what time do you close on Saturday": "hours_saturday.json",
+  "are you open on the 4th of July?": "hours_july4.json",
+  "when does the kitchen close?": "answer_kitchen_hours.json",
+  "table for 4 on Friday at 7pm": "booking_form.json",
+  "do you cater for 40?": "catering_form_40.json",
+  "I'd like to send you a message": "form_contact.json",
+  "is there parking nearby?": "gap.json",
+  "tell me a joke": "off_topic.json"
+}

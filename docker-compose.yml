@@ -1,0 +1,25 @@
+# Postgres + pgvector only. Every other process runs on the host (docs/SCHEMA.md section 2).
+# The DDL was verified on pg16. Bound to loopback: local processes only.
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    ports:
+      - "127.0.0.1:${CAC_DB_PORT:-54320}:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${CAC_BOOTSTRAP_PASSWORD:-postgres_dev}
+      POSTGRES_DB: cac
+      CAC_OWNER_PASSWORD: ${CAC_OWNER_PASSWORD:-cac_owner_dev}
+      CAC_SERVE_PASSWORD: ${CAC_SERVE_PASSWORD:-cac_serve_dev}
+    volumes:
+      - cac_pgdata:/var/lib/postgresql/data
+      - ./db/schema.sql:/schema/schema.sql:ro
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cac"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+volumes:
+  cac_pgdata:

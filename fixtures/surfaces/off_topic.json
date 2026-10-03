@@ -1,0 +1,18 @@
+{
+  "surface_id": "s_off_topic",
+  "kind": "off_topic",
+  "title": "Help",
+  "say": "I can help with our menu, hours, bookings and catering.",
+  "views": [],
+  "chips": [
+    "What's on draft?",
+    "Vegetarian options",
+    "Are you open tonight?"
+  ],
+  "meta": {
+    "cache": "miss",
+    "latency_ms": 1210,
+    "graph_version": 7,
+    "model": "local"
+  }
+}

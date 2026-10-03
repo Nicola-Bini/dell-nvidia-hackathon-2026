@@ -1,0 +1,36 @@
+{
+  "surface_id": "s_booking_form",
+  "kind": "answer",
+  "title": "Booking",
+  "say": "Tell us when and how many.",
+  "views": [
+    {
+      "id": "v1",
+      "component": "BookingForm",
+      "data": {
+        "prefill": {
+          "date": "2026-10-09",
+          "time": "19:00",
+          "party_size": 4
+        }
+      },
+      "actions": [
+        {
+          "name": "submit_booking_request",
+          "handler": "server"
+        }
+      ],
+      "text": "Request a table at The Kenmore for 4 on 2026-10-09 at 19:00. This is a request, not a confirmed reservation; the restaurant will confirm."
+    }
+  ],
+  "chips": [
+    "See the menu",
+    "Are you open tonight?"
+  ],
+  "meta": {
+    "cache": "miss",
+    "latency_ms": 1840,
+    "graph_version": 7,
+    "model": "local"
+  }
+}

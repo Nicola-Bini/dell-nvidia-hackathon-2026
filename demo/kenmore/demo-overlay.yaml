@@ -1,0 +1,159 @@
+# The Kenmore — demo overlay. NOT facts from the site.
+# Everything here exists so the flows and fixtures in docs/SCHEMA.md (sections 7, 9, 10) work.
+# The loader applies seed.yaml first, then this file. Remove or replace an entry once the real
+# owner has answered the matching question.
+
+# ASSUMPTION: the site has no reservation flow (its JSON-LD ReserveAction points at a
+# placeholder anchor). BookingForm and the bookings goal need a reservations Service, so the
+# demo adds one. Leads are requests, never confirmed reservations.
+services:
+  - { id: svc_reservations, kind: reservations, name: Table requests }
+
+# ASSUMPTION: the site lists no holiday hours. These two dates are the date-resolver fixtures
+# from schema section 10; the real bar may well be open on both.
+special_hours:
+  - { id: sh_2026_11_26, date: 2026-11-26, closed: true, note: Thanksgiving }
+  - { id: sh_2027_07_04, date: 2027-07-04, closed: true, note: Independence Day }
+
+# ASSUMPTION: nobody at The Kenmore has verified anything. For the demo, the one edge the site
+# states outright in an item name is treated as owner-verified, so a verified badge can be
+# shown. The other edges in seed.yaml `unverified_diets` stay unverified; mi_the_veg_dog is the
+# "not verified, ask staff" fixture (the schema's mi_caprese).
+verified_diets:
+  diet_vegetarian: [mi_the_beyond_meat_burger_vegetarian]
+
+# ASSUMPTION: placeholder goals. Private; never published. Only `steer` crosses the boundary.
+goals:
+  - { id: goal_bookings, statement: Fill tables on weeknights, priority: 5,
+      advanced_by: [BookingForm] }
+  - { id: goal_catering, statement: Sign up catering clients, priority: 4,
+      advanced_by: [CateringQuoteForm] }
+
+private:
+  customers:
+    - { id: cust_canary, name: "Zephyrine Quillfeather", contact: "canary@example.invalid" }
+
+# /v1/bootstrap extras. Theme values come from seed.yaml `brand`.
+bootstrap:
+  nav:
+    - { label: Menu, preset: menu }
+    - { label: Hours, preset: hours }
+    - { label: Book, preset: booking }
+    - { label: Catering, preset: catering }
+  chips: ["What's on draft?", "Vegetarian options", "Are you open tonight?"]
+
+# UIComponent catalog (schema section 7), P0 entries. `say`, `chips` and labels are template
+# text written for the demo. ui_form_contact mirrors the fields of the site's contact form.
+ui_components:
+  - id: ui_answer
+    component: Answer
+    version: 1
+    use_when: "A stored FAQ answers the question: about the bar, kitchen hours, brunch, takeout, private events, burger add-ons, contact, jobs."
+    binds: { labels: [FAQ], min: 1, max: 1 }
+    selectable: true
+    rail_label: Answer
+    say: null
+    chips: ["See the menu", "Are you open tonight?"]
+    channels: [web, mcp]
+  - id: ui_menu_list
+    component: MenuList
+    version: 1
+    use_when: "Visitor asks about food or drinks: burgers, hot dogs, appetizers, beer, wine, cocktails, a diet, or a named item."
+    binds: { labels: [MenuItem], min: 1, max: 12 }
+    selectable: true
+    preset: menu
+    rail_label: Menu
+    say: "Here is what matches."
+    chips: ["What's on draft?", "Book a table"]
+    channels: [web, mcp]
+  - id: ui_hours_card
+    component: HoursCard
+    version: 1
+    use_when: "Visitor asks about opening hours or whether the bar is open on a day."
+    binds: { labels: [HoursSpec, SpecialHours], min: 1, max: 12 }
+    selectable: true
+    preset: hours
+    rail_label: Hours
+    say: null                       # computed sentence
+    chips: ["When does the kitchen close?", "See the menu"]
+    channels: [web, mcp]
+  - id: ui_booking_form
+    component: BookingForm
+    version: 1
+    use_when: "Visitor wants a table or asks how to reserve."
+    binds: { labels: [Service], min: 1, max: 1 }
+    selectable: true
+    preset: booking
+    cta_label: Book a table
+    rail_label: Booking
+    say: "Tell us when and how many."
+    chips: ["See the menu", "Are you open tonight?"]
+    channels: [web, mcp]
+  - id: ui_catering_quote_form
+    component: CateringQuoteForm
+    version: 1
+    use_when: "Visitor asks about catering, a large group, or food for an event."
+    binds: { labels: [Service], min: 1, max: 1 }
+    selectable: true
+    preset: catering
+    cta_label: Get a catering quote
+    rail_label: Catering
+    say: "Tell us the date and headcount."
+    chips: ["See the menu", "Can I host a private event?"]
+    channels: [web, mcp]
+  - id: ui_allergen_notice
+    component: AllergenNotice
+    version: 1
+    use_when: "Visitor names an allergen or an allergy."
+    binds: { labels: [Allergen], min: 0, max: 1 }
+    selectable: true
+    rail_label: Allergens
+    say: null
+    chips: ["See the menu"]
+    channels: [web, mcp]
+  - id: ui_goal_cta
+    component: GoalCTA
+    version: 1
+    use_when: "Never selected; the binder inserts it from steer."
+    binds: { labels: [UIComponent], min: 1, max: 1 }
+    selectable: false
+    channels: [web, mcp]
+  - id: ui_fact_card
+    component: FactCard
+    version: 1
+    use_when: "One node of a label that has no purpose-built component."
+    binds: { labels: [], min: 1, max: 1 }
+    selectable: true
+    rail_label: Details
+    say: null
+    chips: ["See the menu"]
+    channels: [web, mcp]
+  - id: ui_list_card
+    component: ListCard
+    version: 1
+    use_when: "Several nodes of one label that has no purpose-built component."
+    binds: { labels: [], min: 1, max: 12 }
+    selectable: true
+    rail_label: List
+    say: null
+    chips: ["See the menu"]
+    channels: [web, mcp]
+  - id: ui_form_contact
+    component: FormCard
+    primitive: FormCard
+    version: 1
+    use_when: "Visitor wants to send the bar a message, or has a general or press inquiry."
+    binds: { labels: [Service], min: 0, max: 1 }
+    selectable: true
+    rail_label: Contact
+    say: "Send us a message and we'll get back to you."
+    chips: ["See the menu", "Are you open tonight?"]
+    channels: [web, mcp]
+    submit_label: Send
+    fields:
+      - { name: name, type: text, label: Name, required: true }
+      - { name: email, type: text, label: Email, required: true }
+      - { name: phone, type: text, label: Phone Number, required: true }
+      - { name: topic, type: select, label: "What are you getting in touch about?",
+          required: false, options: [General Inquiry, Press Inquiry] }
+      - { name: message, type: text, label: Your Message, required: true }

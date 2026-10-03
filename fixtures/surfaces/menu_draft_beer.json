@@ -1,0 +1,146 @@
+{
+  "surface_id": "s_menu_draft_beer",
+  "kind": "answer",
+  "title": "Draft Beer",
+  "say": "Here is what matches.",
+  "views": [
+    {
+      "id": "v1",
+      "component": "MenuList",
+      "data": {
+        "title": "Draft Beer",
+        "items": [
+          {
+            "id": "mi_bentwater_sluice_juice",
+            "name": "Bentwater Sluice Juice",
+            "price": "$8.50",
+            "description": "With aromatics of orange, tangerine, and lime peel, this IPA is juicy, hazy, smooth and a Boston favorite. Hazy IPA. 6.2%. 16oz",
+            "badges": []
+          },
+          {
+            "id": "mi_xul_tiny_umbrella",
+            "name": "Xul Tiny Umbrella",
+            "price": "$10.50",
+            "description": "Gluten free sour with mango, guava and pineapple. Topical Vibes all day!!",
+            "badges": [
+              {
+                "diet": "Gluten-free",
+                "verified": false
+              }
+            ]
+          },
+          {
+            "id": "mi_aeronaut_robot_crush",
+            "name": "Aeronaut Robot Crush",
+            "price": "$8.00",
+            "description": "KAPOW! This adventure fuel for humans features flavors of biscuit and honey balanced with hints of citrus. A bounty of sweet pilsner malt collides with the perfect dose of Citra hops to create a crisp, quaffable and award-winning lager, ROBOT CRUSH! 5.1% 16oz",
+            "badges": []
+          },
+          {
+            "id": "mi_exhibit_a_everyday_lager",
+            "name": "Exhibit A Everyday Lager",
+            "price": "$8.50",
+            "description": "Classic American Lager features a traditional Pilsner malt character with a touch of Noble Hops. 4.9% 16oz",
+            "badges": []
+          },
+          {
+            "id": "mi_maine_lunch",
+            "name": "Maine Lunch",
+            "price": "$12.00",
+            "description": "Lunch is a special whale that has been spotted off the Maine coast since 1982. She has what looks like a bite taken out of her fin, which adds to her unique character. With aromas of caramel, orange, papaya, grapefruit, and underlying floral notes, with hints of onion and garlic. 7% 12oz",
+            "badges": []
+          },
+          {
+            "id": "mi_bissel_brothers_substance",
+            "name": "Bissel brothers substance",
+            "price": "$10.00",
+            "description": "Our precious flagship. Brightly dank and designed to be just mysterious enough.. Hopped with Falconer’s Flight, Centennial, Apollo, Chinook, and Simcoe. 6.6%",
+            "badges": []
+          },
+          {
+            "id": "mi_3_floyds_zombie_dust",
+            "name": "3 Floyds Zombie Dust",
+            "price": "$9.50",
+            "description": "Intensely hopped and gushing undead Pale Ale 6.5% 16oz",
+            "badges": []
+          },
+          {
+            "id": "mi_allagash_white",
+            "name": "Allagash White",
+            "price": "$7.75",
+            "description": "Our interpretation of a traditional Belgian wheat beer. Brewed with a generous portion of wheat and spiced with coriander and Curacao orange peel, this beer is fruity, refreshing and slightly cloudy in appearance.",
+            "badges": []
+          },
+          {
+            "id": "mi_coors_light",
+            "name": "Coors Light",
+            "price": "$6.00",
+            "description": "Draft",
+            "badges": []
+          },
+          {
+            "id": "mi_fat_tire",
+            "name": "Fat Tire",
+            "price": "$8.00",
+            "description": "Fat Tire's unique flavor profile originates from 1930s Belgium. During this era, small breweries began offering easy-drinking beer crafted with signature Belgian yeast in order to satisfy the tastes of visiting British soldiers. Today, Fat Tire blends a subtle malt presence with a slightly fruity hop profile and crisp finish, to create a bright and balanced beer that drinks easy, anywhere. 5.2%",
+            "badges": []
+          },
+          {
+            "id": "mi_stella",
+            "name": "Stella",
+            "price": "$8.00",
+            "description": "This premium imported beer is brewed in Belgium and made with light barley malt, and Tomahawk and Saaz hops. The brewing process lends to a wonderful floral aroma, well-balanced malt sweetness, crisp hop bitterness and a soft dry finish 5% 16oz",
+            "badges": []
+          },
+          {
+            "id": "mi_guinness",
+            "name": "Guinness",
+            "price": "$9.00",
+            "description": "Rich and creamy. Distinctively black. Velvety in its finish. This iconic beer is defined by harmony. Sip after sip, sweet counters bitter as the malt arrives on cue to compliment a base of roasted barley. Just as the unmistakable white head sits flush atop the dark beer, so do the flavors counter and combine perfectly. ABV 4.2%",
+            "badges": []
+          }
+        ],
+        "more": {
+          "label": "Full menu",
+          "preset": "menu"
+        }
+      },
+      "actions": [],
+      "text": "Draft Beer: Bentwater Sluice Juice, $8.50; Xul Tiny Umbrella, $10.50; Aeronaut Robot Crush, $8.00; Exhibit A Everyday Lager, $8.50; Maine Lunch, $12.00; Bissel brothers substance, $10.00; 3 Floyds Zombie Dust, $9.50; Allagash White, $7.75; Coors Light, $6.00; Fat Tire, $8.00; Stella, $8.00; Guinness, $9.00. 2 more on the full menu."
+    },
+    {
+      "id": "v2",
+      "component": "AllergenNotice",
+      "data": {
+        "allergen": null,
+        "contains": []
+      },
+      "actions": [],
+      "text": "Before placing your order, please inform your server if a person in your party has a food allergy."
+    },
+    {
+      "id": "v3",
+      "component": "GoalCTA",
+      "data": {
+        "label": "Book a table"
+      },
+      "actions": [
+        {
+          "name": "open_view:booking",
+          "handler": "client"
+        }
+      ],
+      "text": ""
+    }
+  ],
+  "chips": [
+    "What's on draft?",
+    "Book a table"
+  ],
+  "meta": {
+    "cache": "miss",
+    "latency_ms": 1840,
+    "graph_version": 7,
+    "model": "local"
+  }
+}

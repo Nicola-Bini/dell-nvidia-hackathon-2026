@@ -1,0 +1,23 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+dist-mcp/
+
+# Editors, logs, local agent state
+.vscode/*
+!.vscode/tasks.json
+*.log
+.claude/settings.local.json

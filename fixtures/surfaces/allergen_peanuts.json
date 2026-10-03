@@ -1,0 +1,41 @@
+{
+  "surface_id": "s_allergen_peanuts",
+  "kind": "answer",
+  "title": "Allergens",
+  "say": "",
+  "views": [
+    {
+      "id": "v1",
+      "component": "AllergenNotice",
+      "data": {
+        "allergen": "peanuts",
+        "contains": []
+      },
+      "actions": [],
+      "text": "We cannot guarantee any dish is free of peanuts. Please tell your server about your allergy."
+    },
+    {
+      "id": "v2",
+      "component": "GoalCTA",
+      "data": {
+        "label": "Book a table"
+      },
+      "actions": [
+        {
+          "name": "open_view:booking",
+          "handler": "client"
+        }
+      ],
+      "text": ""
+    }
+  ],
+  "chips": [
+    "See the menu"
+  ],
+  "meta": {
+    "cache": "miss",
+    "latency_ms": 1840,
+    "graph_version": 7,
+    "model": "local"
+  }
+}

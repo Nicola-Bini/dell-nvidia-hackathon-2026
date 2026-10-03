@@ -1,0 +1,1070 @@
+{
+  "surface_id": "s_preset_menu",
+  "kind": "preset",
+  "title": "Menu",
+  "say": "Here is our menu.",
+  "views": [
+    {
+      "id": "v1",
+      "component": "MenuList",
+      "data": {
+        "title": "Draft Beer",
+        "items": [
+          {
+            "id": "mi_bentwater_sluice_juice",
+            "name": "Bentwater Sluice Juice",
+            "price": "$8.50",
+            "description": "With aromatics of orange, tangerine, and lime peel, this IPA is juicy, hazy, smooth and a Boston favorite. Hazy IPA. 6.2%. 16oz",
+            "badges": []
+          },
+          {
+            "id": "mi_xul_tiny_umbrella",
+            "name": "Xul Tiny Umbrella",
+            "price": "$10.50",
+            "description": "Gluten free sour with mango, guava and pineapple. Topical Vibes all day!!",
+            "badges": [
+              {
+                "diet": "Gluten-free",
+                "verified": false
+              }
+            ]
+          },
+          {
+            "id": "mi_aeronaut_robot_crush",
+            "name": "Aeronaut Robot Crush",
+            "price": "$8.00",
+            "description": "KAPOW! This adventure fuel for humans features flavors of biscuit and honey balanced with hints of citrus. A bounty of sweet pilsner malt collides with the perfect dose of Citra hops to create a crisp, quaffable and award-winning lager, ROBOT CRUSH! 5.1% 16oz",
+            "badges": []
+          },
+          {
+            "id": "mi_exhibit_a_everyday_lager",
+            "name": "Exhibit A Everyday Lager",
+            "price": "$8.50",
+            "description": "Classic American Lager features a traditional Pilsner malt character with a touch of Noble Hops. 4.9% 16oz",
+            "badges": []
+          },
+          {
+            "id": "mi_maine_lunch",
+            "name": "Maine Lunch",
+            "price": "$12.00",
+            "description": "Lunch is a special whale that has been spotted off the Maine coast since 1982. She has what looks like a bite taken out of her fin, which adds to her unique character. With aromas of caramel, orange, papaya, grapefruit, and underlying floral notes, with hints of onion and garlic. 7% 12oz",
+            "badges": []
+          },
+          {
+            "id": "mi_bissel_brothers_substance",
+            "name": "Bissel brothers substance",
+            "price": "$10.00",
+            "description": "Our precious flagship. Brightly dank and designed to be just mysterious enough.. Hopped with Falconer’s Flight, Centennial, Apollo, Chinook, and Simcoe. 6.6%",
+            "badges": []
+          },
+          {
+            "id": "mi_3_floyds_zombie_dust",
+            "name": "3 Floyds Zombie Dust",
+            "price": "$9.50",
+            "description": "Intensely hopped and gushing undead Pale Ale 6.5% 16oz",
+            "badges": []
+          },
+          {
+            "id": "mi_allagash_white",
+            "name": "Allagash White",
+            "price": "$7.75",
+            "description": "Our interpretation of a traditional Belgian wheat beer. Brewed with a generous portion of wheat and spiced with coriander and Curacao orange peel, this beer is fruity, refreshing and slightly cloudy in appearance.",
+            "badges": []
+          },
+          {
+            "id": "mi_coors_light",
+            "name": "Coors Light",
+            "price": "$6.00",
+            "description": "Draft",
+            "badges": []
+          },
+          {
+            "id": "mi_fat_tire",
+            "name": "Fat Tire",
+            "price": "$8.00",
+            "description": "Fat Tire's unique flavor profile originates from 1930s Belgium. During this era, small breweries began offering easy-drinking beer crafted with signature Belgian yeast in order to satisfy the tastes of visiting British soldiers. Today, Fat Tire blends a subtle malt presence with a slightly fruity hop profile and crisp finish, to create a bright and balanced beer that drinks easy, anywhere. 5.2%",
+            "badges": []
+          },
+          {
+            "id": "mi_stella",
+            "name": "Stella",
+            "price": "$8.00",
+            "description": "This premium imported beer is brewed in Belgium and made with light barley malt, and Tomahawk and Saaz hops. The brewing process lends to a wonderful floral aroma, well-balanced malt sweetness, crisp hop bitterness and a soft dry finish 5% 16oz",
+            "badges": []
+          },
+          {
+            "id": "mi_guinness",
+            "name": "Guinness",
+            "price": "$9.00",
+            "description": "Rich and creamy. Distinctively black. Velvety in its finish. This iconic beer is defined by harmony. Sip after sip, sweet counters bitter as the malt arrives on cue to compliment a base of roasted barley. Just as the unmistakable white head sits flush atop the dark beer, so do the flavors counter and combine perfectly. ABV 4.2%",
+            "badges": []
+          },
+          {
+            "id": "mi_lawsons_easy_sip",
+            "name": "Lawsons Easy Sip",
+            "price": "$8.00",
+            "description": "2026 Limited Release: June Easy Sip is a mellow India Pale Ale that floats across the palate with citrusy and floral hop notes and a clean, bright malt character. Made for mindful sipping and deep inhales, it’s easy the whole way through, inviting you to slow down and enjoy the moment. 4.5%",
+            "badges": []
+          },
+          {
+            "id": "mi_widowmaker_green_wizard",
+            "name": "Widowmaker Green Wizard",
+            "price": "$11.00",
+            "description": "Green Wizard is a West Coast IPA brewed with Four Star Farms' Centennial and Cascade hops. We wanted to brew something a little different so we created this super balanced, extremely drinkable ripper with some of the freshest hops grown locally. Coming in at 6.66% abv in celebration of our 666th batch and pouring clear and bright with a beautiful copper color, this beer smells like you are walking through a dense northern forest, and tastes like honeycomb, grapefruit pith and the stickiest of the icky",
+            "badges": []
+          }
+        ],
+        "more": null
+      },
+      "actions": [],
+      "text": "Draft Beer: Bentwater Sluice Juice, $8.50; Xul Tiny Umbrella, $10.50; Aeronaut Robot Crush, $8.00; Exhibit A Everyday Lager, $8.50; Maine Lunch, $12.00; Bissel brothers substance, $10.00; 3 Floyds Zombie Dust, $9.50; Allagash White, $7.75; Coors Light, $6.00; Fat Tire, $8.00; Stella, $8.00; Guinness, $9.00; Lawsons Easy Sip, $8.00; Widowmaker Green Wizard, $11.00."
+    },
+    {
+      "id": "v2",
+      "component": "MenuList",
+      "data": {
+        "title": "IPAs",
+        "items": [
+          {
+            "id": "mi_lawsons_sip_of_sunshine",
+            "name": "Lawson's Sip of Sunshine",
+            "price": "$12.50",
+            "description": "Packed with juicy tropical fruit character, bright floral aromas and delectable layers of hop flavor. IPA 8% 16ozCAN",
+            "badges": []
+          },
+          {
+            "id": "mi_bentwater_sluice_juice",
+            "name": "Bentwater Sluice Juice",
+            "price": "$8.50",
+            "description": "With aromatics of orange, tangerine, and lime peel, this IPA is juicy, hazy, smooth and a Boston favorite. Hazy IPA. 6.2%. 16oz",
+            "badges": []
+          },
+          {
+            "id": "mi_zero_gravity_conehead",
+            "name": "Zero Gravity Conehead",
+            "price": "$9.50",
+            "description": "single hop wheat IPA, brewed with all Citra hops. Lighter in color and lower in a.b.v. than a typical American IPA, this beer has just the right amount of hop flavor and aroma. Completely satisfyingly awesome in its crispiness and well-rounded hopaliciousness. 5.7% 16oz CAN",
+            "badges": []
+          },
+          {
+            "id": "mi_bent_water_double_thunderfunk",
+            "name": "Bent Water Double Thunderfunk",
+            "price": "$12.50",
+            "description": "The big brother of the best-selling Thunder Funk IPA. This big-bodied West Coast style Double IPA drinks deceptively smooth and delivers big hop flavors. Double the Thunder. 9.1% 16oz CAN",
+            "badges": []
+          },
+          {
+            "id": "mi_sloop_brewing_juice_bomb",
+            "name": "Sloop Brewing Juice Bomb",
+            "price": "$10.50",
+            "description": "The low bitterness and late hopping showcase the citrusy, juicy notes of American hops. A blast of tropical aroma is followed by a resiny and balanced flavor. Juice bomb features all the aspects and nuances of full hop flavor — not just bitterness. An IPA for real hop lovers. 6.5% 16oz CAN",
+            "badges": []
+          },
+          {
+            "id": "mi_maine_lunch",
+            "name": "Maine Lunch",
+            "price": "$12.00",
+            "description": "Lunch is a special whale that has been spotted off the Maine coast since 1982. She has what looks like a bite taken out of her fin, which adds to her unique character. With aromas of caramel, orange, papaya, grapefruit, and underlying floral notes, with hints of onion and garlic. 7% 12oz",
+            "badges": []
+          },
+          {
+            "id": "mi_voodoo_ranger_ipa",
+            "name": "Voodoo Ranger IPA",
+            "price": "$10.00",
+            "description": "Bursting with tropical aromas and juicy fruit flavors from Mosaic and Amarillo hops, this golden IPA is perfectly bitter with a refreshing sublime finish. 7% CAN 19.2oz",
+            "badges": []
+          },
+          {
+            "id": "mi_voodoo_ranger_juice_force",
+            "name": "Voodoo Ranger Juice Force",
+            "price": "$12.00",
+            "description": "Juice Force IPA is a fruit-forward, highly drinkable 9.5% ABV blast. Buckle Up. With this hazy ipa, you'll be buzzing the tower in no time 9.5% CAN 19oz",
+            "badges": []
+          },
+          {
+            "id": "mi_bissel_brothers_substance",
+            "name": "Bissel brothers substance",
+            "price": "$10.00",
+            "description": "Our precious flagship. Brightly dank and designed to be just mysterious enough.. Hopped with Falconer’s Flight, Centennial, Apollo, Chinook, and Simcoe. 6.6%",
+            "badges": []
+          },
+          {
+            "id": "mi_toppling_goliath_king_sue",
+            "name": "Toppling Goliath King Sue",
+            "price": "$12.50",
+            "description": "This full-bodied, hazy double IPA is Citra-hopped with a juicy combination of mango, orange, and pineapple flavors finishing with a grapefruit aroma and ferocious bite. 7.8% CAN",
+            "badges": []
+          },
+          {
+            "id": "mi_zero_gravity_conehead_haze",
+            "name": "Zero Gravity Conehead Haze",
+            "price": "$9.50",
+            "description": "This hazy IPA is a vibrant burst of juicy, tropical fruit and the perfect hint of pine. The blend of old school and new school hops balanced by crisp pilsner malt make this an unforgettable, modern classic. CAN 16oz 6.3%",
+            "badges": []
+          },
+          {
+            "id": "mi_zero_gravity_madonna",
+            "name": "Zero Gravity Madonna",
+            "price": "$12.50",
+            "description": "Generously hopped Vermont Double IPA made with Pilsner malt and American wheat. Balanced, bright and highly satisfying 8% 16oz CAN",
+            "badges": []
+          },
+          {
+            "id": "mi_foam_built_to_spill",
+            "name": "Foam Built To Spill",
+            "price": "$12.50",
+            "description": "Foam Brewers' Built to Spill is a New England-style double India pale ale (IPA) with 8% ABV. It's brewed in Burlington, Vermont, and has notes of citrus, pineapple, and tangerine. Some say it has a soft body, low bitterness, and a hop-centric flavor. 8% 16oz CAN",
+            "badges": []
+          },
+          {
+            "id": "mi_fiddlehead_second_fiddle",
+            "name": "Fiddlehead Second Fiddle",
+            "price": "$11.00",
+            "description": "Extensively dry-hopped Double IPA, Second Fiddle is second in name only. It is big and aromatic with notes of citrus, tropical fruit and fresh pine. 8% CAN 16oz",
+            "badges": []
+          },
+          {
+            "id": "mi_bells_two_hearted",
+            "name": "Bells Two Hearted",
+            "price": "$11.50",
+            "description": "Named after fishing waters in Michigan’s Upper Peninsula, Two Hearted is an American IPA brewed and dry hopped with 100% Centennial hops. Beloved by longtime and new craft beer drinkers, Two Hearted is an iconic ale that’s perfect for any occasion. 7% CAN 16oz",
+            "badges": []
+          }
+        ],
+        "more": null
+      },
+      "actions": [],
+      "text": "IPAs: Lawson's Sip of Sunshine, $12.50; Bentwater Sluice Juice, $8.50; Zero Gravity Conehead, $9.50; Bent Water Double Thunderfunk, $12.50; Sloop Brewing Juice Bomb, $10.50; Maine Lunch, $12.00; Voodoo Ranger IPA, $10.00; Voodoo Ranger Juice Force, $12.00; Bissel brothers substance, $10.00; Toppling Goliath King Sue, $12.50; Zero Gravity Conehead Haze, $9.50; Zero Gravity Madonna, $12.50; Foam Built To Spill, $12.50; Fiddlehead Second Fiddle, $11.00; Bells Two Hearted, $11.50."
+    },
+    {
+      "id": "v3",
+      "component": "MenuList",
+      "data": {
+        "title": "Sours",
+        "items": [
+          {
+            "id": "mi_weldworks_berlinish_fish",
+            "name": "Weldworks Berlinish Fish",
+            "price": "$11.00",
+            "description": "",
+            "badges": []
+          },
+          {
+            "id": "mi_weldworks_breakfast_in_bed",
+            "name": "Weldworks Breakfast in Bed",
+            "price": "$11.00",
+            "description": "",
+            "badges": []
+          },
+          {
+            "id": "mi_destill_sour_pickle",
+            "name": "Destill Sour Pickle",
+            "price": "$10.50",
+            "description": "",
+            "badges": []
+          },
+          {
+            "id": "mi_prairie_artisan_smoothie_esses",
+            "name": "Prairie Artisan Smoothie Esses",
+            "price": "$10.50",
+            "description": "",
+            "badges": []
+          },
+          {
+            "id": "mi_prairie_artisan_thai_delight",
+            "name": "Prairie Artisan Thai Delight",
+            "price": "$10.50",
+            "description": "",
+            "badges": []
+          },
+          {
+            "id": "mi_prairie_artisan_beach_drink",
+            "name": "Prairie Artisan Beach Drink",
+            "price": "$10.50",
+            "description": "",
+            "badges": []
+          },
+          {
+            "id": "mi_vanished_valley_fernando",
+            "name": "Vanished Valley Fernando",
+            "price": "$11.50",
+            "description": "",
+            "badges": []
+          },
+          {
+            "id": "mi_austin_street_after_the_glitter_fades",
+            "name": "Austin Street After the Glitter Fades",
+            "price": "$9.50",
+            "description": "",
+            "badges": []
+          },
+          {
+            "id": "mi_drekkerfest_fluff_and_stuff",
+            "name": "Drekkerfest Fluff and Stuff",
+            "price": "$10.50",
+            "description": "",
+            "badges": []
+          },
+          {
+            "id": "mi_450_brewing_gassed_gummies",
+            "name": "450 Brewing Gassed Gummies",
+            "price": "$10.50",
+            "description": "",
+            "badges": []
+          },
+          {
+            "id": "mi_450_brewing_breaking_dab",
+            "name": "450 Brewing Breaking Dab",
+            "price": "$10.50",
+            "description": "",
+            "badges": []
+          },
+          {
+            "id": "mi_branch_and_blade_sack_lunch",
+            "name": "Branch and Blade Sack Lunch",
+            "price": "$10.50",
+            "description": "",
+            "badges": []
+          },
+          {
+            "id": "mi_japas_cervejaria_sawa_yuzu",
+            "name": "Japas Cervejaria Sawa Yuzu",
+            "price": "$11.00",
+            "description": "",
+            "badges": []
+          },
+          {
+            "id": "mi_long_live_hola_fantasma",
+            "name": "Long Live Hola Fantasma",
+            "price": "$10.50",
+            "description": "",
+            "badges": []
+          },
+          {
+            "id": "mi_mortaliish_hydra",
+            "name": "Mortaliish Hydra",
+            "price": "$11.00",
+            "description": "",
+            "badges": []
+          }
+        ],
+        "more": null
+      },
+      "actions": [],
+      "text": "Sours: Weldworks Berlinish Fish, $11.00; Weldworks Breakfast in Bed, $11.00; Destill Sour Pickle, $10.50; Prairie Artisan Smoothie Esses, $10.50; Prairie Artisan Thai Delight, $10.50; Prairie Artisan Beach Drink, $10.50; Vanished Valley Fernando, $11.50; Austin Street After the Glitter Fades, $9.50; Drekkerfest Fluff and Stuff, $10.50; 450 Brewing Gassed Gummies, $10.50; 450 Brewing Breaking Dab, $10.50; Branch and Blade Sack Lunch, $10.50; Japas Cervejaria Sawa Yuzu, $11.00; Long Live Hola Fantasma, $10.50; Mortaliish Hydra, $11.00."
+    },
+    {
+      "id": "v4",
+      "component": "MenuList",
+      "data": {
+        "title": "Porters & Stouts",
+        "items": [
+          {
+            "id": "mi_guinness",
+            "name": "Guinness",
+            "price": "$9.00",
+            "description": "Rich and creamy. Distinctively black. Velvety in its finish. This iconic beer is defined by harmony. Sip after sip, sweet counters bitter as the malt arrives on cue to compliment a base of roasted barley. Just as the unmistakable white head sits flush atop the dark beer, so do the flavors counter and combine perfectly. ABV 4.2%",
+            "badges": []
+          }
+        ],
+        "more": null
+      },
+      "actions": [],
+      "text": "Porters & Stouts: Guinness, $9.00."
+    },
+    {
+      "id": "v5",
+      "component": "MenuList",
+      "data": {
+        "title": "Ciders, Seltzer, Etc",
+        "items": [
+          {
+            "id": "mi_citizen_cider_the_dirty_mayor",
+            "name": "Citizen Cider The Dirty Mayor",
+            "price": "$10.50",
+            "description": "More sweet than dry with a ginger nip 16 oz CAN 5.2%",
+            "badges": []
+          },
+          {
+            "id": "mi_citizen_unified_press",
+            "name": "Citizen Unified Press",
+            "price": "$10.50",
+            "description": "Dry hard apple cider 5.2% 16oz CAN",
+            "badges": []
+          },
+          {
+            "id": "mi_downeast_original_blend",
+            "name": "Downeast Original Blend",
+            "price": "$9.50",
+            "description": "Juicy and sweet, tastes and smells just like farm fresh cider you drank as a kid. Intensely flavorful.",
+            "badges": []
+          },
+          {
+            "id": "mi_stormalong_red_skies_at_night",
+            "name": "Stormalong Red Skies At Night",
+            "price": "$8.50",
+            "description": "A tropical, fruit forward cider made with passionfruit and hibiscus. It has a rich finish and deep pink color. flavor 5.5% **temporarily unavailable**",
+            "badges": []
+          },
+          {
+            "id": "mi_happy_dad_grape",
+            "name": "Happy Dad Grape",
+            "price": "$7.50",
+            "description": "Happy Dad Grape Hard Seltzer is a true game-changer refreshment for those see king a crisp, delightful, gluten-free seltzer experience. Unlike other seltzers, it boasts a gentle level of carbonation, and its all-natural flavors ensure a pure and unadulterated taste that leaves no lingering aftertaste. All-natural Grape offering a light and invigorating sensation with every sip. 5% 12oz CAN",
+            "badges": [
+              {
+                "diet": "Gluten-free",
+                "verified": false
+              }
+            ]
+          },
+          {
+            "id": "mi_happy_dad_fruit_punch",
+            "name": "Happy Dad Fruit Punch",
+            "price": "$7.50",
+            "description": "Happy Dad Fruit Punch Hard Seltzer is a true game-changer refreshment for those seeking a crisp, delightful, gluten-free seltzer experience. Unlike other seltzers, it boasts a gentle level of carbonation, and its all-natural flavors ensure a pure and unadulterated taste that leaves no lingering aftertaste. Fruit Punch stands out as the crowd-pleaser among our flavors, offering a light and invigorating sensation with every sip. 5% 12oz CAN",
+            "badges": [
+              {
+                "diet": "Gluten-free",
+                "verified": false
+              }
+            ]
+          },
+          {
+            "id": "mi_sunboy_pineapple",
+            "name": "Sunboy Pineapple",
+            "price": "$9.50",
+            "description": "Hydrating coconut water and real pineapple juice, playfully spiked and sparked. No added sugar. 5% alcohol. You'll thank us tomorrow morning. 12oz CA",
+            "badges": []
+          },
+          {
+            "id": "mi_sunboy_passion_fruit",
+            "name": "Sunboy Passion Fruit",
+            "price": "$9.50",
+            "description": "All the goodness of hydrating coconut water and real passion fruit juice, playfully spiked and sparkled. Not too sweet. Refreshingly real. 5% ABV. 12ozCAN",
+            "badges": []
+          },
+          {
+            "id": "mi_sunboy_tangerine",
+            "name": "Sunboy Tangerine",
+            "price": "$9.50",
+            "description": "All the goodness of hydrating coconut water and real tangerine juice, playfully spiked and sparkled. Not too sweet. Refreshingly real. 5% ABV. 12ozCAN",
+            "badges": []
+          },
+          {
+            "id": "mi_sunboy_mango",
+            "name": "Sunboy Mango",
+            "price": "$9.50",
+            "description": "All the goodness of hydrating coconut water and real mango juice, playfully spiked and sparkled. Not too sweet. Refreshingly real. 5% ABV. 12ozCAN",
+            "badges": []
+          },
+          {
+            "id": "mi_lightstrike_blue_rush",
+            "name": "Lightstrike Blue Rush",
+            "price": "$9.50",
+            "description": "An icy-cool rush of berry and yuzu flavors. Crisp, Crushable, no carbonation , no nonsesnse, and no need to tap out. Contains 5% 16.9oz",
+            "badges": []
+          },
+          {
+            "id": "mi_sun_cruiser_classic",
+            "name": "Sun Cruiser Classic",
+            "price": "$9.00",
+            "description": "",
+            "badges": []
+          },
+          {
+            "id": "mi_sun_cruiser_half_and_half",
+            "name": "Sun Cruiser Half and Half",
+            "price": "$9.00",
+            "description": "",
+            "badges": []
+          }
+        ],
+        "more": null
+      },
+      "actions": [],
+      "text": "Ciders, Seltzer, Etc: Citizen Cider The Dirty Mayor, $10.50; Citizen Unified Press, $10.50; Downeast Original Blend, $9.50; Stormalong Red Skies At Night, $8.50; Happy Dad Grape, $7.50; Happy Dad Fruit Punch, $7.50; Sunboy Pineapple, $9.50; Sunboy Passion Fruit, $9.50; Sunboy Tangerine, $9.50; Sunboy Mango, $9.50; Lightstrike Blue Rush, $9.50; Sun Cruiser Classic, $9.00; Sun Cruiser Half and Half, $9.00."
+    },
+    {
+      "id": "v6",
+      "component": "MenuList",
+      "data": {
+        "title": "Pale Ales & Lagers & Wheat & Pilsners & Fruited",
+        "items": [
+          {
+            "id": "mi_3_floyds_zombie_dust",
+            "name": "3 Floyds Zombie Dust",
+            "price": "$9.50",
+            "description": "Intensely hopped and gushing undead Pale Ale 6.5% 16oz",
+            "badges": []
+          },
+          {
+            "id": "mi_aeronaut_robot_crush",
+            "name": "Aeronaut Robot Crush",
+            "price": "$8.00",
+            "description": "KAPOW! This adventure fuel for humans features flavors of biscuit and honey balanced with hints of citrus. A bounty of sweet pilsner malt collides with the perfect dose of Citra hops to create a crisp, quaffable and award-winning lager, ROBOT CRUSH! 5.1% 16oz",
+            "badges": []
+          },
+          {
+            "id": "mi_allagash_white",
+            "name": "Allagash White",
+            "price": "$7.75",
+            "description": "Our interpretation of a traditional Belgian wheat beer. Brewed with a generous portion of wheat and spiced with coriander and Curacao orange peel, this beer is fruity, refreshing and slightly cloudy in appearance.",
+            "badges": []
+          },
+          {
+            "id": "mi_exhibit_a_everyday_lager",
+            "name": "Exhibit A Everyday Lager",
+            "price": "$8.50",
+            "description": "Classic American Lager features a traditional Pilsner malt character with a touch of Noble Hops. 4.9% 16oz",
+            "badges": []
+          },
+          {
+            "id": "mi_stella",
+            "name": "Stella",
+            "price": "$8.00",
+            "description": "This premium imported beer is brewed in Belgium and made with light barley malt, and Tomahawk and Saaz hops. The brewing process lends to a wonderful floral aroma, well-balanced malt sweetness, crisp hop bitterness and a soft dry finish 5% 16oz",
+            "badges": []
+          },
+          {
+            "id": "mi_coors_light",
+            "name": "Coors Light",
+            "price": "$6.00",
+            "description": "Draft",
+            "badges": []
+          },
+          {
+            "id": "mi_zero_gravity_green_state_lager",
+            "name": "Zero Gravity Green State Lager",
+            "price": "$9.50",
+            "description": "A crisp, easy-drinking Pilsner beer that is influenced by the great brewing regions of the world, but that charts its own course through this elegant style. 4.9% 16oz can",
+            "badges": []
+          },
+          {
+            "id": "mi_narragansett_lager",
+            "name": "Narragansett Lager",
+            "price": "$5.75",
+            "description": "Narragansett Lager is old reliable. It was the first beer brewed by “The Original Six” back in 1890, and the best selling beer in New England from the 1930’s to the 1970’s. It has crossed paths with Dr. Seuss, it was famously crushed by Captain Quint in Jaws, and it was the first alcoholic beverage to partner with a professional sports team – the Boston Red Sox from 1944-1975. Drinking a Lager is drinking to New England history. Hi Neighbor! Have a ‘Gansett!",
+            "badges": []
+          },
+          {
+            "id": "mi_hero_95_low_carb",
+            "name": "Hero 95 (low carb)",
+            "price": "$7.00",
+            "description": "Hero95 is a crisp and refreshing 95 calorie lager. It’s for beer drinkers who live with a purpose and care about the choices they make. For the People who make big and small sacrifices every day for the benefit of others and themselves. It’s for sharing with friends and enjoying the satisfying moments in life that make everything worth it. Because there’s a hero in all of us. 4% CAN 12oz",
+            "badges": []
+          },
+          {
+            "id": "mi_fat_tire",
+            "name": "Fat Tire",
+            "price": "$8.00",
+            "description": "Fat Tire's unique flavor profile originates from 1930s Belgium. During this era, small breweries began offering easy-drinking beer crafted with signature Belgian yeast in order to satisfy the tastes of visiting British soldiers. Today, Fat Tire blends a subtle malt presence with a slightly fruity hop profile and crisp finish, to create a bright and balanced beer that drinks easy, anywhere. 5.2%",
+            "badges": []
+          },
+          {
+            "id": "mi_voodoo_ranger_hard_charged_tea",
+            "name": "Voodoo Ranger Hard Charged Tea",
+            "price": "$7.50",
+            "description": "Hang on to your teabags, this 7% lemon-favored hard tea is the hardest tea on the shelf. CAN 12oz",
+            "badges": []
+          },
+          {
+            "id": "mi_moat_mountain_brewing_miss_vs_blueberry_ale",
+            "name": "Moat Mountain Brewing Miss V's Blueberry Ale",
+            "price": "$8.50",
+            "description": "0ur Naturally Flavored American Ale. We use 90 lbs. of Wild Maine Blueberries in every brew with our original process of adding the steam-extracted juices post fermentation. Our intent has always been; beer first, fruit second. The results showcase a remarkable crisp, light beer with a mild fruit flavor. 4.9% 16ozCAN",
+            "badges": []
+          },
+          {
+            "id": "mi_sullivans_malting_red_ale",
+            "name": "Sullivan's Malting Red Ale",
+            "price": "$11.00",
+            "description": "A classic ruby ale with deep malt combining rich biscuit and gentle caramel notes. 5% 16oz CAN",
+            "badges": []
+          },
+          {
+            "id": "mi_kona_big_wave",
+            "name": "Kona Big Wave",
+            "price": "$7.00",
+            "description": "Kona Brewing Co. was founded by father and son team Cameron Healy and Spoon Khalsa. The pair had a vision to reflect the spirit, culture, and beauty of Hawaii in a collection of local island beers, so in 1994 they set out for the Big Island to bring their dream to life. Kona Big Wave, originally brewed as Pacific Golden Ale was brewed in 1994 and inspired by the legendary waves in Hawaii. Now, Kona Big Wave has rebranded from Kona Brewing Co. and is debuting a new logo and modernized packaging design, while staying true to the DNA of Big Wave. Kona Big Wave’s easy-drinking, island-inspired taste has become an iconic go-to beer all around the world. It’s time to grab your friends, bring the good vibes, and pass around a couple of ice-cold Kona Big Waves. 5.3% 16oz CAN",
+            "badges": []
+          },
+          {
+            "id": "mi_widowmaker_riff_city_lager",
+            "name": "Widowmaker Riff City Lager",
+            "price": "$9.50",
+            "description": "Brewed with a single malt imported from Germany and steeped noble hops. Biscuit-like aroma, mildly sweet yet crisp, with a subtle bitter bite culminating in an elevated yet simply delicious offering. Welcome to Riff City. 4.20% 16oz CAN",
+            "badges": []
+          },
+          {
+            "id": "mi_naragansett_dels_shandy",
+            "name": "Naragansett Dels Shandy",
+            "price": "$5.75",
+            "description": "Narragansett’s Famous Lager has been brewed & beloved throughout New England for over 120 years. The first Del’s stand opened in RI in 1948 using an old family recipe brought over from Italy. Since then, both ‘Gansett and Del’s Lemonade have refreshed thousands of happy customers on and around the Rhode Island beaches…and beyond. Now the two flavors are combined to create a most refreshing summertime adult beverage. We hope you love it!",
+            "badges": []
+          },
+          {
+            "id": "mi_naragansett_fresh_catch",
+            "name": "Naragansett Fresh Catch",
+            "price": "$7.50",
+            "description": "",
+            "badges": []
+          }
+        ],
+        "more": null
+      },
+      "actions": [],
+      "text": "Pale Ales & Lagers & Wheat & Pilsners & Fruited: 3 Floyds Zombie Dust, $9.50; Aeronaut Robot Crush, $8.00; Allagash White, $7.75; Exhibit A Everyday Lager, $8.50; Stella, $8.00; Coors Light, $6.00; Zero Gravity Green State Lager, $9.50; Narragansett Lager, $5.75; Hero 95 (low carb), $7.00; Fat Tire, $8.00; Voodoo Ranger Hard Charged Tea, $7.50; Moat Mountain Brewing Miss V's Blueberry Ale, $8.50; Sullivan's Malting Red Ale, $11.00; Kona Big Wave, $7.00; Widowmaker Riff City Lager, $9.50; Naragansett Dels Shandy, $5.75; Naragansett Fresh Catch, $7.50."
+    },
+    {
+      "id": "v7",
+      "component": "MenuList",
+      "data": {
+        "title": "Bottles",
+        "items": [
+          {
+            "id": "mi_bud_light",
+            "name": "Bud Light",
+            "price": "$6.00",
+            "description": "Lager 5%",
+            "badges": []
+          },
+          {
+            "id": "mi_budweiser",
+            "name": "Budweiser",
+            "price": "$6.00",
+            "description": "Lager 5%",
+            "badges": []
+          },
+          {
+            "id": "mi_michelob_ultra",
+            "name": "Michelob Ultra",
+            "price": "$6.50",
+            "description": "Light Lager 4.2%",
+            "badges": []
+          },
+          {
+            "id": "mi_miller_high_life",
+            "name": "Miller High Life",
+            "price": "$4.95",
+            "description": "American Lager 4.6%",
+            "badges": []
+          },
+          {
+            "id": "mi_corona_extra",
+            "name": "Corona Extra",
+            "price": "$7.00",
+            "description": "Imported Lager 4.6%",
+            "badges": []
+          },
+          {
+            "id": "mi_twisted_tea",
+            "name": "Twisted Tea",
+            "price": "$7.00",
+            "description": "",
+            "badges": []
+          },
+          {
+            "id": "mi_sam_adams",
+            "name": "Sam Adams",
+            "price": "$7.50",
+            "description": "Boston Lager 5%",
+            "badges": []
+          }
+        ],
+        "more": null
+      },
+      "actions": [],
+      "text": "Bottles: Bud Light, $6.00; Budweiser, $6.00; Michelob Ultra, $6.50; Miller High Life, $4.95; Corona Extra, $7.00; Twisted Tea, $7.00; Sam Adams, $7.50."
+    },
+    {
+      "id": "v8",
+      "component": "MenuList",
+      "data": {
+        "title": "White Wine",
+        "items": [
+          {
+            "id": "mi_kim_crawford_sauvignon_blanc",
+            "name": "Kim Crawford Sauvignon Blanc",
+            "price": "$9.50",
+            "description": "A fresh, juicy wine with vibrant acidity and plenty of weight and length on the palate. Ripe, tropical fruit flavor with passion fruit, melon, and grapefruit. Listed prices: $9.50 / $34.",
+            "badges": []
+          },
+          {
+            "id": "mi_anterra_pinot_grigio",
+            "name": "Anterra Pinot Grigio",
+            "price": "$9.50",
+            "description": "Cultivated from the vineyards in Sicily, this Pinot Grigio is dry in flavor and has a pleasant and delicate bouquet with fruity and floral notes. Listed prices: $9.50 / $34.",
+            "badges": []
+          },
+          {
+            "id": "mi_dreaming_tree_chardonnay",
+            "name": "Dreaming Tree Chardonnay",
+            "price": "$10.50",
+            "description": "Dreaming tree captures the essence of Central Coast wines. It is a big wine that is wonderfully drinkable solo or with food. It is fruity--and exceptionally well-balanced. Nice after taste--sort of a lingering spicy/citrus feel. Listed prices: $10.50 / $36.",
+            "badges": []
+          },
+          {
+            "id": "mi_lab_rose",
+            "name": "Lab Rose",
+            "price": "$8.50",
+            "description": "Lab is a very versatile, fresh and light wine, made with traditional grape varieties of this region. Fruity with great acidity. Listed prices: $8.50 / $30.",
+            "badges": []
+          },
+          {
+            "id": "mi_misguided_vines_aurora_catarratto",
+            "name": "Misguided Vines Aurora Catarratto",
+            "price": "$10.00",
+            "description": "Catarratto (aka Lucido) has a lively, crisp, and zesty acidity that makes you think of Sicilian lemon trees basking in the sun. It is a native Sicilian grape, planted throughout the island. Aurora is a great example of how versatile and unique this grape can be.",
+            "badges": []
+          }
+        ],
+        "more": null
+      },
+      "actions": [],
+      "text": "White Wine: Kim Crawford Sauvignon Blanc, $9.50; Anterra Pinot Grigio, $9.50; Dreaming Tree Chardonnay, $10.50; Lab Rose, $8.50; Misguided Vines Aurora Catarratto, $10.00."
+    },
+    {
+      "id": "v9",
+      "component": "MenuList",
+      "data": {
+        "title": "Red Wine",
+        "items": [
+          {
+            "id": "mi_meiomi_pinot_noir",
+            "name": "Meiomi Pinot Noir",
+            "price": "$10.00",
+            "description": "Discover the well balanced, richly flavored, and deliciously complex taste of Meiomi Pinot Noir. Lifted aromas of jammy fruit and toasty oak are followed by expressive dark berry, juicy strawberry, and toasty mocha flavors. Listed prices: $10 / $36.",
+            "badges": []
+          },
+          {
+            "id": "mi_dreaming_tree_crush",
+            "name": "Dreaming Tree Crush",
+            "price": "$10.00",
+            "description": "Crush is a special blend hand-selected from our favorite varieties. This wine pulls you in with notes of smoky berry and a pop of raspberry jam. Around the table or out on the patio, it's a wine you're going to want to share with your favorite people. Listed prices: $10 / $36.",
+            "badges": []
+          },
+          {
+            "id": "mi_leese_fitch_cabernet",
+            "name": "Leese-Fitch Cabernet",
+            "price": "$10.00",
+            "description": "A rich and bold expression with aromas of blackberry, toasted spice and tobacco leaf. The inviting aromas ring true on the juicy palate with loads of blackberry and boysenberry fruit flavors and layers of jam, allspice and sweet oak adding depth and richness. Listed prices: $10 / $36.",
+            "badges": []
+          },
+          {
+            "id": "mi_leese_fitch_merlot",
+            "name": "Leese-Fitch Merlot",
+            "price": "$10.00",
+            "description": "A bright and inviting with aromas of ripe red fruits; raspberry, cherry and pomegranate. Additional aromas of red currants, clove spice and sweet vanilla lead to a medium-bodied, juicy palate. Layers of juicy fruit flavors, black olive and notes of dried lavender add complexity. Listed prices: $10 / $36.",
+            "badges": []
+          }
+        ],
+        "more": null
+      },
+      "actions": [],
+      "text": "Red Wine: Meiomi Pinot Noir, $10.00; Dreaming Tree Crush, $10.00; Leese-Fitch Cabernet, $10.00; Leese-Fitch Merlot, $10.00."
+    },
+    {
+      "id": "v10",
+      "component": "MenuList",
+      "data": {
+        "title": "Cocktails",
+        "items": [
+          {
+            "id": "mi_little_leaguer",
+            "name": "Little Leaguer",
+            "price": "$10.50",
+            "description": "A Creamsicle for grown-ups who are kids at heart. Stoli Vanilla, Triple Sec, Fanta Orange Soda",
+            "badges": []
+          },
+          {
+            "id": "mi_the_undergrad",
+            "name": "The Undergrad",
+            "price": "$10.50",
+            "description": "Root Beer Float vibes without all the calories of the ice cream. Stoli Vanilla, Spiced Rum, Barq's Root Beer.",
+            "badges": []
+          },
+          {
+            "id": "mi_suicide_squeeze",
+            "name": "Suicide Squeeze",
+            "price": "$11.50",
+            "description": "Life is better with a margarita in your hand. Tortilla White Tequila, Triple Sec, Lime Juice, Simple Syrup. Make it spicy with Tanteo Jalapeno Tequila for $1 more",
+            "badges": []
+          },
+          {
+            "id": "mi_the_pink_hat",
+            "name": "The Pink Hat",
+            "price": "$12.50",
+            "description": "Whether its your first game or your 50th, this is a great start to a gameday. Grapefruit Vodka, lime juice, ginger beer.",
+            "badges": []
+          }
+        ],
+        "more": null
+      },
+      "actions": [],
+      "text": "Cocktails: Little Leaguer, $10.50; The Undergrad, $10.50; Suicide Squeeze, $11.50; The Pink Hat, $12.50."
+    },
+    {
+      "id": "v11",
+      "component": "MenuList",
+      "data": {
+        "title": "Burgers",
+        "items": [
+          {
+            "id": "mi_the_k_burger",
+            "name": "The \"K\" Burger",
+            "price": "$6.95",
+            "description": "Bibb Lettuce, Tomato, Pickles, \"K Sauce\"",
+            "badges": []
+          },
+          {
+            "id": "mi_double_patty_americana",
+            "name": "Double Patty Americana",
+            "price": "$13.95",
+            "description": "Two Beef Patties, American Cheese, Bacon, Bibb Lettuce, Tomato, Pickles, \"k\" Sauce, Fries",
+            "badges": []
+          },
+          {
+            "id": "mi_the_smokehouse_burger",
+            "name": "The Smokehouse Burger",
+            "price": "$8.95",
+            "description": "Beef Patty Cheddar Cheese, Bacon, Onion Ring, Cole Slaw, BBQ Sauce",
+            "badges": []
+          },
+          {
+            "id": "mi_shroom_lover_burger",
+            "name": "Shroom Lover Burger",
+            "price": "$8.95",
+            "description": "Beef Patty, Swiss Cheese, Roasted Mushrooms, Truffle Aioli",
+            "badges": []
+          },
+          {
+            "id": "mi_the_breakfast_burger",
+            "name": "The Breakfast Burger",
+            "price": "$8.95",
+            "description": "Beef Pattie, Fried Egg, Bacon, Caramelized Onions, American Cheese, Chipotle Aioli",
+            "badges": []
+          },
+          {
+            "id": "mi_crispy_chicken_sandwich",
+            "name": "Crispy Chicken Sandwich",
+            "price": "$9.95",
+            "description": "Battered Chicken Breast, Bibb Lettuce, Tomato, Honey Buffalo Sauce",
+            "badges": []
+          },
+          {
+            "id": "mi_cali_burger",
+            "name": "Cali Burger",
+            "price": "$8.95",
+            "description": "Turkey Patty, Cheddar Cheese, Guacamole, Jalapenos. Chipotle Aioli",
+            "badges": []
+          },
+          {
+            "id": "mi_the_beyond_meat_burger_vegetarian",
+            "name": "The Beyond Meat Burger (Vegetarian)",
+            "price": "$9.95",
+            "description": "Vegetable Patty, Bibb Lettuce, Tomato, Onions, Roasted Pepper Sauce",
+            "badges": [
+              {
+                "diet": "Vegetarian",
+                "verified": true
+              }
+            ]
+          }
+        ],
+        "more": null
+      },
+      "actions": [],
+      "text": "Burgers: The \"K\" Burger, $6.95; Double Patty Americana, $13.95; The Smokehouse Burger, $8.95; Shroom Lover Burger, $8.95; The Breakfast Burger, $8.95; Crispy Chicken Sandwich, $9.95; Cali Burger, $8.95; The Beyond Meat Burger (Vegetarian), $9.95."
+    },
+    {
+      "id": "v12",
+      "component": "MenuList",
+      "data": {
+        "title": "Hot Dogs",
+        "items": [
+          {
+            "id": "mi_the_basic_dog",
+            "name": "The Basic Dog",
+            "price": "$4.50",
+            "description": "Plain Hot Dog",
+            "badges": []
+          },
+          {
+            "id": "mi_snoop_dog_ripper",
+            "name": "Snoop Dog Ripper",
+            "price": "$5.25",
+            "description": "Deep-Fried Hot Dog, Smoked Onions and Peppers, Yellow Mustard",
+            "badges": []
+          },
+          {
+            "id": "mi_chili_cheese_dog",
+            "name": "Chili Cheese Dog",
+            "price": "$5.95",
+            "description": "Beef Chili, Beer Cheese, Diced White Onion",
+            "badges": []
+          },
+          {
+            "id": "mi_tijuana_street_dog",
+            "name": "Tijuana Street Dog",
+            "price": "$5.50",
+            "description": "Cheddar Jack Cheese, Bacon, Diced White Onion, Cholula Hot Sauce",
+            "badges": []
+          },
+          {
+            "id": "mi_the_brunch_dog",
+            "name": "The Brunch Dog",
+            "price": "$5.95",
+            "description": "Fried Egg, Bacon, Cheddar Jack Cheese, Chipotle Aioli",
+            "badges": []
+          },
+          {
+            "id": "mi_the_veg_dog",
+            "name": "The Veg \"Dog\"",
+            "price": "$6.95",
+            "description": "Beyond Meat Seet Italian Sausage, Sauteed Onions, Roasted Pepper Sauce",
+            "badges": [
+              {
+                "diet": "Vegetarian",
+                "verified": false
+              }
+            ]
+          }
+        ],
+        "more": null
+      },
+      "actions": [],
+      "text": "Hot Dogs: The Basic Dog, $4.50; Snoop Dog Ripper, $5.25; Chili Cheese Dog, $5.95; Tijuana Street Dog, $5.50; The Brunch Dog, $5.95; The Veg \"Dog\", $6.95."
+    },
+    {
+      "id": "v13",
+      "component": "MenuList",
+      "data": {
+        "title": "Appetizers, Salads and More",
+        "items": [
+          {
+            "id": "mi_chicken_wings",
+            "name": "Chicken Wings",
+            "price": "$13.95",
+            "description": "Choice of Buffalo, Teriyaki, Kenmore Dry Rub, BBQ, Honey Buffalo, Sweet Chili, or Plain",
+            "badges": []
+          },
+          {
+            "id": "mi_kenmore_nachos",
+            "name": "Kenmore Nachos",
+            "price": "$14.95",
+            "description": "Tortilla Chips, Cheddar Jack Cheese, Black Beans, Jalapenos, Salsa Fresca, Guacamole, Sour Cream. Listed prices: Full Tray $14.95 / Half Tray $8.50.",
+            "badges": []
+          },
+          {
+            "id": "mi_chicken_quesadilla",
+            "name": "Chicken Quesadilla",
+            "price": "$12.95",
+            "description": "Roasted Chicken, Cheddar Jack Cheese, Scallion, Salsa Fresca, Sour Cream",
+            "badges": []
+          },
+          {
+            "id": "mi_pretzel_bites",
+            "name": "Pretzel Bites",
+            "price": "$9.95",
+            "description": "Cheese and Beer Mustard Sauce",
+            "badges": []
+          },
+          {
+            "id": "mi_kenmore_fries_tray",
+            "name": "Kenmore Fries Tray",
+            "price": "$6.95",
+            "description": "French Fries, Kenmore Seasoning, Ranch dipping Sauce",
+            "badges": []
+          },
+          {
+            "id": "mi_chicken_tenders",
+            "name": "Chicken Tenders",
+            "price": "$13.95",
+            "description": "Chicken Tenders with Honey Mustard, Buffalo, Kenmore Dry Rub, BBQ, Teriyaki, Honey Buffalo, Sweet Chili. Tenders can be tossed in Sauce. Add: French Fries $2.95, K Fries $4.",
+            "badges": []
+          },
+          {
+            "id": "mi_crispy_brussels_sprouts",
+            "name": "Crispy Brussels Sprouts",
+            "price": "$10.95",
+            "description": "Spicy Honey Ranch, Bacon Crumble",
+            "badges": []
+          },
+          {
+            "id": "mi_mozzarella_sticks",
+            "name": "Mozzarella Sticks",
+            "price": "$9.95",
+            "description": "",
+            "badges": []
+          },
+          {
+            "id": "mi_chips_and_chunky_guacamole",
+            "name": "Chips and Chunky Guacamole",
+            "price": "$8.95",
+            "description": "",
+            "badges": []
+          },
+          {
+            "id": "mi_chili_cheese_fries",
+            "name": "Chili Cheese Fries",
+            "price": "$8.95",
+            "description": "Beef Chili, Beer Cheese",
+            "badges": []
+          },
+          {
+            "id": "mi_beef_black_bean_chili",
+            "name": "Beef Black Bean Chili",
+            "price": "$9.95",
+            "description": "Cheddar Jack Cheese, Tortilla Chips",
+            "badges": []
+          },
+          {
+            "id": "mi_chopped_salad",
+            "name": "Chopped Salad",
+            "price": "$10.95",
+            "description": "Romaine Lettuce, Bacon, Tomato, Cucumber, Red Onion, Cheddar Jack Cheese, Ranch Dressing Add Fried Chicken $4.95",
+            "badges": []
+          }
+        ],
+        "more": null
+      },
+      "actions": [],
+      "text": "Appetizers, Salads and More: Chicken Wings, $13.95; Kenmore Nachos, $14.95; Chicken Quesadilla, $12.95; Pretzel Bites, $9.95; Kenmore Fries Tray, $6.95; Chicken Tenders, $13.95; Crispy Brussels Sprouts, $10.95; Mozzarella Sticks, $9.95; Chips and Chunky Guacamole, $8.95; Chili Cheese Fries, $8.95; Beef Black Bean Chili, $9.95; Chopped Salad, $10.95."
+    },
+    {
+      "id": "v14",
+      "component": "AllergenNotice",
+      "data": {
+        "allergen": null,
+        "contains": []
+      },
+      "actions": [],
+      "text": "Before placing your order, please inform your server if a person in your party has a food allergy."
+    },
+    {
+      "id": "v15",
+      "component": "GoalCTA",
+      "data": {
+        "label": "Book a table"
+      },
+      "actions": [
+        {
+          "name": "open_view:booking",
+          "handler": "client"
+        }
+      ],
+      "text": ""
+    }
+  ],
+  "chips": [
+    "What's on draft?",
+    "Book a table"
+  ],
+  "meta": {
+    "cache": "preset",
+    "latency_ms": 12,
+    "graph_version": 7,
+    "model": "local"
+  }
+}

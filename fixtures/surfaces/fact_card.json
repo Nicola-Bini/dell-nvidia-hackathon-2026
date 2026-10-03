@@ -1,0 +1,52 @@
+{
+  "surface_id": "s_fact_card",
+  "kind": "answer",
+  "title": "Private events",
+  "say": "",
+  "views": [
+    {
+      "id": "v1",
+      "component": "FactCard",
+      "data": {
+        "title": "Private events",
+        "label": "Service",
+        "facts": [
+          {
+            "name": "Kind",
+            "value": "private_events"
+          },
+          {
+            "name": "Details",
+            "value": "You can inquire about hosting a private event at any of our sister locations listed below. Corner Tavern, The Westland, Harry's Bar & Grill, The Avenue, White Horse Tavern, The Hopewell, The Last Drop."
+          }
+        ],
+        "verified": false
+      },
+      "actions": [],
+      "text": "Private events: You can inquire about hosting a private event at any of our sister locations listed below. Corner Tavern, The Westland, Harry's Bar & Grill, The Avenue, White Horse Tavern, The Hopewell, The Last Drop."
+    },
+    {
+      "id": "v2",
+      "component": "GoalCTA",
+      "data": {
+        "label": "Book a table"
+      },
+      "actions": [
+        {
+          "name": "open_view:booking",
+          "handler": "client"
+        }
+      ],
+      "text": ""
+    }
+  ],
+  "chips": [
+    "See the menu"
+  ],
+  "meta": {
+    "cache": "miss",
+    "latency_ms": 1840,
+    "graph_version": 7,
+    "model": "local"
+  }
+}

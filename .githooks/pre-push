@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Enabled by `make hooks`. Blocks a push that touches another lane's files or targets main.
+set -euo pipefail
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    echo "pre-push: no direct pushes to main. Open a PR from <lane>/<wp>-<slug>." >&2
+    exit 1
+  fi
+done
+exec "$(git rev-parse --show-toplevel)/tools/lane-check"
