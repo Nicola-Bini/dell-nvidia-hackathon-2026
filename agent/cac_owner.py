@@ -13,6 +13,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+PLANS = Path(__file__).resolve().parent / "plans"
 ASK_TEMPLATE = ("{count} visitors asked about {topic}. I have nothing confirmed. "
                 "What should I tell them?")
 
@@ -33,9 +34,18 @@ class OwnerApi:
             return {"error": e.code, "detail": e.read().decode()[:300]}
 
 
+def planned_topics() -> set[str]:
+    """Topics a plan in plans/ answers with a graph change rather than a question."""
+    return {t.lower() for f in PLANS.glob("*.json")
+            for t in json.loads(f.read_text()).get("topics", [])}
+
+
 def ask_top_gap(api: OwnerApi) -> dict:
-    """Move 1: put the most-asked open gap to the owner. Returns the message to send."""
+    """Move 1: put the most-asked open gap to the owner. Returns the message to send.
+    Gaps that a plan covers (a missing type, not a missing fact) are left to move 2."""
     gaps = api.call("GET", "/owner/gaps?state=open")
+    if isinstance(gaps, list):
+        gaps = [g for g in gaps if g["topic"].lower() not in planned_topics()]
     if not isinstance(gaps, list) or not gaps:
         return {"asked": False, "reason": "no open gaps"}
     top = max(gaps, key=lambda g: g["count"])

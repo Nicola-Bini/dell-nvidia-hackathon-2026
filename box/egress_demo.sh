@@ -4,10 +4,13 @@ set -u
 . "$(dirname "$0")/lib.sh"
 [ -n "$SANDBOX" ] || { echo "no sandbox registered"; exit 1; }
 try() { # label url expect(allow|deny)
-  local code; code=$(nemoclaw "$SANDBOX" exec --no-tty -- curl -s -m 8 -o /dev/null -w '%{http_code}' "$2" 2>/dev/null)
+  local code exp
+  code=$(nemoclaw "$SANDBOX" exec --no-tty -- \
+    curl -s -m 8 -o /dev/null -w '%{http_code}' "$2" 2>/dev/null)
   local verdict=denied; [[ "$code" =~ ^(2|3|4)[0-9][0-9]$ && "$code" != 403 ]] && verdict=allowed
   [ "$3" = allow ] && exp=allowed || exp=denied
-  if [ "$verdict" = "$exp" ]; then echo "PASS $1: $verdict (HTTP $code)"; else echo "FAIL $1: $verdict, expected $exp (HTTP $code)"; FAIL=1; fi
+  if [ "$verdict" = "$exp" ]; then echo "PASS $1: $verdict (HTTP $code)"
+  else echo "FAIL $1: $verdict, expected $exp (HTTP $code)"; FAIL=1; fi
 }
 FAIL=0
 try "owner API (allowed)"   "http://host.openshell.internal:8081/openapi.json" allow
