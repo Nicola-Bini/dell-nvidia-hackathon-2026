@@ -72,44 +72,62 @@ def propose_plan(api: OwnerApi, plan_path: str, topic: str) -> dict:
     return {"proposed": out}
 
 
-def main(argv: list[str]) -> int:
+def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="cac_owner")
     sub = p.add_subparsers(dest="cmd", required=True)
     for name in ("digest", "topics", "gaps", "schema", "ask-top-gap", "publish"):
         sub.add_parser(name)
-    s = sub.add_parser("changes"); s.add_argument("--state", default="")
-    s = sub.add_parser("answer"); s.add_argument("gap_id"); s.add_argument("text")
-    s = sub.add_parser("special-hours"); s.add_argument("date"); s.add_argument("--closed", action="store_true")
-    s.add_argument("--opens"); s.add_argument("--closes"); s.add_argument("--note")
-    s = sub.add_parser("propose"); s.add_argument("plan"); s.add_argument("--topic", required=True)
-    s = sub.add_parser("change"); s.add_argument("action"); s.add_argument("--target", required=True)
-    s.add_argument("--after", required=True); s.add_argument("--reason", required=True)
-    s.add_argument("--evidence", required=True)
-    a = p.parse_args(argv)
+    s = sub.add_parser("changes")
+    s.add_argument("--state", default="")
+    s = sub.add_parser("answer")
+    s.add_argument("gap_id")
+    s.add_argument("text")
+    s = sub.add_parser("special-hours")
+    s.add_argument("date")
+    s.add_argument("--closed", action="store_true")
+    for opt in ("--opens", "--closes", "--note"):
+        s.add_argument(opt)
+    s = sub.add_parser("propose")
+    s.add_argument("plan")
+    s.add_argument("--topic", required=True)
+    s = sub.add_parser("change")
+    s.add_argument("action")
+    for opt in ("--target", "--after", "--reason", "--evidence"):
+        s.add_argument(opt, required=True)
+    return p
+
+
+def special_hours(api: OwnerApi, a: argparse.Namespace) -> dict:
+    fields = {"date": a.date, "closed": a.closed, "opens": a.opens, "closes": a.closes,
+              "note": a.note}
+    body = {k: v for k, v in fields.items() if v is not None}
+    res = api.call("POST", "/owner/special-hours", body)
+    if "error" not in res:
+        api.call("POST", "/owner/publish")
+    return res
+
+
+def post_change(api: OwnerApi, a: argparse.Namespace) -> dict:
+    return api.call("POST", "/owner/changes", {
+        "action": a.action, "target": json.loads(a.target), "after": json.loads(a.after),
+        "reason": a.reason, "evidence": a.evidence})
+
+
+def main(argv: list[str]) -> int:
+    a = build_parser().parse_args(argv)
     api = OwnerApi()
-    if a.cmd in ("digest", "topics", "gaps", "schema"):
-        res = api.call("GET", f"/owner/{a.cmd}" + ("?state=open" if a.cmd == "gaps" else ""))
-    elif a.cmd == "changes":
-        res = api.call("GET", "/owner/changes" + (f"?state={a.state}" if a.state else ""))
-    elif a.cmd == "ask-top-gap":
-        res = ask_top_gap(api)
-    elif a.cmd == "answer":
-        res = record_answer(api, a.gap_id, a.text)
-    elif a.cmd == "special-hours":
-        body = {k: v for k, v in {"date": a.date, "closed": a.closed, "opens": a.opens,
-                                  "closes": a.closes, "note": a.note}.items() if v is not None}
-        res = api.call("POST", "/owner/special-hours", body)
-        if "error" not in res:
-            api.call("POST", "/owner/publish")
-    elif a.cmd == "publish":
-        res = api.call("POST", "/owner/publish")
-    elif a.cmd == "propose":
-        res = propose_plan(api, a.plan, a.topic)
-    else:
-        res = api.call("POST", "/owner/changes", {
-            "action": a.action, "target": json.loads(a.target), "after": json.loads(a.after),
-            "reason": a.reason, "evidence": a.evidence})
-    print(json.dumps(res))
+    handlers = {
+        "ask-top-gap": lambda: ask_top_gap(api),
+        "answer": lambda: record_answer(api, a.gap_id, a.text),
+        "special-hours": lambda: special_hours(api, a),
+        "publish": lambda: api.call("POST", "/owner/publish"),
+        "propose": lambda: propose_plan(api, a.plan, a.topic),
+        "change": lambda: post_change(api, a),
+        "changes": lambda: api.call("GET", "/owner/changes?state=" + a.state),
+        "gaps": lambda: api.call("GET", "/owner/gaps?state=open"),
+    }
+    handler = handlers.get(a.cmd, lambda: api.call("GET", f"/owner/{a.cmd}"))
+    print(json.dumps(handler()))
     return 0
 
 

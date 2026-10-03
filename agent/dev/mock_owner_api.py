@@ -8,8 +8,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 TOKEN = os.environ.get("OWNER_TOOLS_TOKEN", "dev-agent-token")
 STATE = {
-    "gaps": {"gap_1": {"gap_id": "gap_1", "topic": "parking", "count": 7, "state": "open"},
-             "gap_2": {"gap_id": "gap_2", "topic": "dog friendly patio", "count": 3, "state": "open"}},
+    "gaps": {
+        "gap_1": {"gap_id": "gap_1", "topic": "parking", "count": 7, "state": "open"},
+        "gap_2": {"gap_id": "gap_2", "topic": "dog patio", "count": 3, "state": "open"}},
     "topics": [{"topic": "gift cards", "count": 12, "sessions": 9, "kind": "unmatched",
                 "component": "Answer"}],
     "changes": [], "faqs": [], "published": 0,
@@ -60,7 +61,8 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, {"node_id": "sh_1"})
         if method == "POST" and path == "/owner/changes":
             cid = f"chg_{len(STATE['changes']) + 1}"
-            STATE["changes"].append({"change_id": cid, "tier": "one_tap", "state": "pending", **body})
+            STATE["changes"].append(
+                {"change_id": cid, "tier": "one_tap", "state": "pending", **body})
             return self.send(200, {"change_id": cid, "tier": "one_tap", "state": "pending"})
         if method == "GET" and path == "/_state":
             return self.send(200, STATE)

@@ -4,8 +4,10 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 
 | Package | State | PR | Proof and result |
 |---|---|---|---|
-| wp1 | merged-pending (PR needs `gh auth login`) | — | `box/checks.sh` -> ALL CHECKS PASSED (embedder WARN, decision below) |
-| wp2 | merged | PR in this branch | `uv run bench/selection_bench.py` -> table below |
+| wp1 | merged | [#3](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/3) | `box/checks.sh` -> ALL CHECKS PASSED (embedder WARN, decision below) |
+| wp2 | merged | [#4](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/4) | `uv run bench/selection_bench.py` -> median 0.25 s, p95 0.30 s at 1; 0.96/1.07 at 4 |
+| wp3 | blocked | — | needs the NemoClaw lock (interactive onboard running, see Blocked on) |
+| wp4 | built against mock, PR in this branch | — | `python3 -m unittest discover -s agent/tests` -> 3 tests OK on the mock; real je API not merged yet |
 
 ## Measured numbers
 
@@ -38,6 +40,11 @@ Box: Dell GB10, aarch64, 121 GB unified memory (about 89 GB available with qwen3
 - Concurrency: Ollama runs with OLLAMA_NUM_PARALLEL unset (effectively serial). Setting it
   needs the ollama service environment (sudo, a person). NEED_INPUT asked once; until then
   budget p95 about 1 s per queued model call and keep MODEL_MAX_INFLIGHT=4.
+
+- wp4 payload shapes: SCHEMA 8.6 does not fix `target` and `after`. The plan uses
+  `{label}` / `{label,node_id}` / `{component,base}` for target and the props for after.
+  Je: confirm or tell me the shape; the mock in `agent/dev/` is to be deleted when the real
+  API lands.
 
 ## Requests handled
 
