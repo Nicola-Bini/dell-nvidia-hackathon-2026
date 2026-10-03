@@ -21,7 +21,9 @@ base = soul.read_text().split("<!-- CAC -->")[0].rstrip()
 cac = Path("/sandbox/agent/INSTRUCTIONS.md").read_text()
 soul.write_text(base + "\n\n<!-- CAC -->\n" + cac)
 PY'
-ep="host.openshell.internal:$OWNER_PORT:read-write:rest:enforce:allowed-ip=172.16.0.0/12"
+ep="host.openshell.internal:$OWNER_PORT::rest:enforce:allowed-ip=172.16.0.0/12"
+# Remove first: a re-add merges into the old rule. No access preset (it would allow all paths).
+os policy update "$SANDBOX" --remove-rule cac_owner_api --wait >/dev/null 2>&1 || true
 os policy update "$SANDBOX" --rule-name cac_owner_api --add-endpoint "$ep" \
   --add-allow "host.openshell.internal:$OWNER_PORT:GET:/owner/**" \
   --add-allow "host.openshell.internal:$OWNER_PORT:POST:/owner/**" \
