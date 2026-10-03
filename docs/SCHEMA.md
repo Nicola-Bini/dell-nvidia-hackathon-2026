@@ -353,6 +353,10 @@ RESET ROLE;
 `RETURNING` and no `ON CONFLICT` (both need read permission). Treat a duplicate-key error on
 `ops.lead` as "already stored".
 
+`db/schema.sql` is this block verbatim. `db/search.sql` runs after it, as the bootstrap
+superuser: it installs `pg_trgm` and adds full-text and trigram GIN indexes on `search_text`
+in `kg.node` and `kg_public.node`, for the retrieval fallback in section 6.
+
 ## 5. Label registry
 
 How the whiteboard's four graph sections map here:
@@ -375,7 +379,7 @@ write them, and cannot create a label with the same name.
 
 | Label | Prefix | Public | Props | Build |
 |---|---|---|---|---|
-| Business | `biz_` | yes | `cuisine`, `price_range`, `phone`, `url`, `tagline`, `timezone` | P0 |
+| Business | `biz_` | yes | `cuisine`, `price_range`, `phone`, `url`, `tagline`, `timezone`, `nav`, `chips` (the last two are the `/v1/bootstrap` navigation and default chips) | P0 |
 | Location | `loc_` | yes | `street`, `city`, `region`, `postal`, `maps_url`, `parking`, `transit` | P0 |
 | HoursSpec | `hrs_` | yes | `days` (mon..sun), `opens`, `closes` (HH:MM) | P0 |
 | SpecialHours | `sh_` | yes | `date` (YYYY-MM-DD), `closed`, `opens`, `closes`, `note` | P0 |
@@ -385,7 +389,7 @@ write them, and cannot create a label with the same name.
 | Allergen | `alg_` | yes | `fda_major`, `synonyms` | P0 |
 | Service | `svc_` | yes | `kind` (reservations, catering, takeout, private_events), `details`, `min_headcount`, `booking_url` | P0 |
 | FAQ | `faq_` | yes | `question`, `answer` | P0 |
-| UIComponent | `ui_` | yes | catalog entry keys (section 7) | P0 |
+| UIComponent | `ui_` | yes | catalog entry keys (section 7), plus `submit_label` for configured forms. The seed writes every key, with `null` for the ones an entry does not use | P0 |
 | Goal | `goal_` | **no** | `statement`, `priority` (1..5, 5 = most important) | P0 |
 | KnowledgeGap | `gap_` | **no** | `topic`, `count`, `sessions`, `state` (open, asked, answered), `origin` (visitor, onboarding) | P0 |
 | Customer | `cust_` | **no** | `name`, `contact`, `notes` | P0 (canary only) |
@@ -448,6 +452,14 @@ labels (never UIComponent), drop weak matches (threshold tuned on the fixture se
 If no embedding model is available on the box, the same `retrieve(text) → candidates` function
 is backed by Postgres full-text search plus `pg_trgm` over `search_text`, using the `synonyms`
 props.
+
+Two additions, both code and never the model:
+
+- **Configured forms are entry nodes.** A `UIComponent` whose `primitive` is `FormCard` is
+  matched on its `use_when` text like a data node, so "I'd like to send you a message" finds
+  the contact form. No other `UIComponent` and no `BrandTrait` is ever a candidate.
+- **Slots add entries.** A `date` or `time` slot adds every hours node; `party_size` adds the
+  reservations Service; `headcount` adds the catering Service.
 
 ## 7. UI component catalog
 
@@ -833,6 +845,11 @@ Other rules:
   `kg_public`. Lead submissions are limited to 3 per session per hour (10 per hour in total on
   the `mcp` channel).
 - CORS allows only `CAC_ALLOWED_ORIGINS`.
+- A stored lead answers `{ "ok": true, "lead_id": "<uuid>", "surface": <confirmation> }`. A
+  submission over the rate limit answers HTTP 429 `{ "ok": false, "errors": [...] }`. Card
+  numbers and SSNs in any field are rejected with 422 and never stored.
+- "Today" is the current date in `CAC_TZ`. `CAC_TODAY=YYYY-MM-DD` pins it for tests and
+  rehearsals.
 - `/v1/metrics` returns latency percentiles, cache hit rate, in-flight model calls, graph
   version, leads captured, goal CTAs shown and clicked, and `model_host` (the resolved model
   endpoint). Counters are kept in process, because `cac_serve` cannot read the log.
@@ -1008,6 +1025,14 @@ private:
 
 The loader writes Goal nodes and `ADVANCES` edges as approved and owner-verified, and resolves
 `advanced_by` names to `ui_<component>` ids. Goal text never leaves `kg`.
+
+The demo business is real, so its seed is two files in `demo/kenmore/`: `seed.yaml` (site
+facts) and `demo-overlay.yaml` (demo assumptions and the catalog), applied in that order by
+`make seed`. Differences from the format above: an item listed in two sections is defined
+once and referenced as `{ ref: mi_x }` (one node, two `HAS_ITEM` edges, each with its own
+`position`); `SpecialHours.date` is stored as a string; overlay `bootstrap.nav` and
+`bootstrap.chips` become Business props. The loader is safe to re-run: it upserts, never
+deletes, and keeps an owner verification it finds.
 
 ## 10. Fixtures and tests
 

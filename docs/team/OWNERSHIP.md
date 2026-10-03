@@ -59,6 +59,12 @@ Its public surface, fixed now so `je` can code against it before it lands:
 | `cac_common.graph.reindex_node(conn, node_id)` | Rebuilds `search_text` from `name` and the label's `public_props`, and sets `embedding` (NULL when `EMBED_BASE_URL` is empty: full-text fallback). Call after every node create or update |
 | `cac_common.graph.publish(conn, business_id) -> int` | Calls `kg.publish()` and returns the new graph version |
 
+Neither call commits: the caller owns the transaction. `reindex_node` raises `LookupError`
+for an unknown node. If an editable install is not importable on your machine (macOS can
+flag a venv under `~/Desktop` as hidden, and Python 3.12.13 then skips its `.pth` files),
+add `pythonpath = ["../../packages/cac_common"]` under `[tool.pytest.ini_options]` and set
+`PYTHONPATH` the same way when you run the service.
+
 ### 3. Serve API (owner: blake; consumers: cj, nico, je)
 
 - Endpoints, pipeline and rules: SCHEMA section 8.5. Surface shape: section 8.4. One golden

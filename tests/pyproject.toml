@@ -1,0 +1,29 @@
+# Environment for the repo-level tests and scripts (tests/, scripts/):
+#   uv run --project tests pytest tests/graph
+#   uv run --project tests python scripts/seed.py
+[project]
+name = "cac-tests"
+version = "0.1.0"
+description = "Repo-level tests and scripts for CAC (graph, privacy, end to end)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "cac-common",
+  "psycopg[binary]>=3.2",
+  "httpx>=0.27",
+  "pyyaml>=6.0",
+  "pytest>=8.3",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+cac-common = { path = "../packages/cac_common", editable = true }
+
+[tool.pytest.ini_options]
+# See services/serve/pyproject.toml: do not rely on editable .pth files.
+pythonpath = ["../packages/cac_common"]
+markers = ["e2e: needs the Serve API and the Owner tools API running"]
+
+[tool.ruff]
+line-length = 100

@@ -1,6 +1,6 @@
 # Shared targets only. Each lane keeps its own commands inside its own directory
 # (see the lane file in docs/team/lanes/), so nobody but Blake needs to edit this file.
-.PHONY: hooks env db-up db-reset db-check lane-check fixtures-check
+.PHONY: hooks env db-up db-reset db-check seed lane-check fixtures-check
 
 hooks:            ## enable the pre-push lane guard
 	git config core.hooksPath .githooks
@@ -23,6 +23,9 @@ db-check:         ## privacy invariant: the serving role cannot read kg, leads o
 	    && echo "ok: cac_serve denied on $$t" \
 	    || { echo "FAIL: cac_serve can read $$t"; exit 1; }; \
 	done
+
+seed: env         ## load demo/kenmore into the graph and publish (safe to re-run)
+	uv run --project tests python scripts/seed.py
 
 lane-check:       ## this branch only touches its own lane
 	tools/lane-check

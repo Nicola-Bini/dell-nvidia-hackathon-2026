@@ -45,7 +45,7 @@ The package, from your lane file:
 >
 > Files you may change for this package: `packages/cac_common/`, `scripts/`, `db/`, `tests/graph/`, `Makefile`
 >
-> Proof: `make db-reset seed && uv run pytest tests/graph`: PRD Flow 0 acceptance (at least 20 items, hours, 2 special-hours dates, 2 services, 2 goals visible publicly only as `steer` on 2 components); a private prop on a public node is absent from `kg_public`; `make db-check`
+> Proof: `make db-reset seed && uv run --project tests pytest tests/graph`: PRD Flow 0 acceptance (at least 20 items, hours, 2 special-hours dates, 2 services, 2 goals visible publicly only as `steer` on 2 components); a private prop on a public node is absent from `kg_public`; `make db-check`
 > Unblocks: je
 
 Loop until the goal is met:
@@ -213,7 +213,7 @@ The package, from your lane file:
 >
 > Files you may change for this package: `scripts/`, `tests/`
 >
-> Proof: `scripts/canary.py` exits 0 and the canary name is in no response
+> Proof: `uv run --project tests python scripts/canary.py` exits 0 and the canary name is in no response
 > Unblocks: demo
 
 Loop until the goal is met:
@@ -241,7 +241,7 @@ The package, from your lane file:
 >
 > Files you may change for this package: `tests/e2e/`
 >
-> Proof: `uv run pytest tests/e2e`: SCHEMA section 10 "Gap loop" and "Agent adds a node type" rows
+> Proof: `uv run --project tests pytest tests/e2e`: SCHEMA section 10 "Gap loop" and "Agent adds a node type" rows
 > Unblocks: gate 18:30
 
 Loop until the goal is met:
