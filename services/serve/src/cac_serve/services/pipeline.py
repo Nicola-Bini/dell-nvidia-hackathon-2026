@@ -17,7 +17,7 @@ from zoneinfo import ZoneInfo
 import jsonschema
 from cac_common.settings import Settings, get_settings
 
-from cac_serve.domain import binder
+from cac_serve.domain import binder, shortcuts
 from cac_serve.domain.graph import Graph
 from cac_serve.domain.normalize import normalized_hash
 from cac_serve.domain.prompt import build_messages
@@ -90,6 +90,13 @@ def _select(graph: Graph, candidates: list[str], text: str) -> tuple[dict | None
     return None, schema, calls
 
 
+def _shortcut(graph: Graph, text: str, today: date) -> Outcome | None:
+    """A chip or nav label that opens a preset: no cache, no model (domain/shortcuts.py)."""
+    preset = shortcuts.preset_for(graph, text)
+    surface = binder.preset_surface(graph, preset, today) if preset else None
+    return Outcome(surface, "preset", "preset") if surface is not None else None
+
+
 def _finish(outcome: Outcome, graph: Graph, started: float) -> Outcome:
     latency = int((time.perf_counter() - started) * 1000)
     outcome.surface["meta"] = {"cache": outcome.cache, "latency_ms": latency,
@@ -105,6 +112,9 @@ def answer(text: str, today: date, settings: Settings) -> tuple[Outcome, Graph, 
         graph = load_graph(conn, settings.business_id)
         if graph.version == 0:
             raise GraphNotPublished()
+        shortcut = _shortcut(graph, text, today)
+        if shortcut is not None:
+            return _finish(shortcut, graph, started), graph, slots, started
         key = cache_repo.CacheKey(settings.business_id, graph.version,
                                   normalized_hash(text), slots_key(slots))
         cached = cache_repo.lookup(conn, key)
@@ -157,7 +167,8 @@ def run_intent(text: str, session_id: str | None, channel: str) -> Outcome:
     )
     with db.writer() as conn:
         log_repo.insert(conn, entry)
-    metrics.record_cache(outcome.cache == "exact")
+    if outcome.cache != "preset":
+        metrics.record_cache(outcome.cache == "exact")
     if binder.steer_shown(outcome.surface):
         metrics.incr_cta_shown()
     return outcome

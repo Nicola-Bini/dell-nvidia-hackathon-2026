@@ -11,7 +11,7 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 | wp5 Actions and presets | merged | [#10](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/10) | `cd services/serve && uv run pytest tests/actions tests/api` -> lead row exists (read as `cac_owner`), past date is 422, fourth lead in an hour is 429, presets bound from the graph, CTA counted (14:54 ET) |
 | wp6 Safety and steer | merged | [#10](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/10) | `cd services/serve && uv run pytest tests/intents/test_section10.py tests/binder/test_binder_safety.py` -> green: unverified diet never a badge, allergen never a dish list, goal steer, generic components for an agent-created label and form (14:54 ET) |
 | wp7 Privacy proofs | merged | [#10](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/10) | `uv run --project tests python scripts/canary.py` -> exit 0, 40 prompts, 47 responses, canary and goals in none; `uv run --project tests python scripts/permission_check.py` -> 5 of 5 reads denied (14:55 ET). MCP tools are probed when `MCP_BASE_URL` is set |
-| wp8 End to end | Serve side merged; owner-API side waits for je's wp5 | [#15](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/15) | `uv run --project tests pytest tests/e2e` (needs `make fake-llm serve`) -> 3 passed, 1 skipped (widget not built): gap loop and agent-added type plus form, each with no restart, and pre-warm. The owner side of each loop is written straight to the database until je's API is on `main` (15:07 ET) |
+| wp8 End to end | Serve side merged; five of six loops pass through je's real API; the gap loop waits for je's wp5 | [#15](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/15), [#head branch "main" is the same as base branch "main", cannot create a pull request](head branch "main" is the same as base branch "main", cannot create a pull request) | `uv run --project tests pytest tests/e2e` (needs `make fake-llm serve`, and je's API on 8081 for the owner half) -> 9 passed, 1 skipped (gap loop through je's API: his wp5 routes are not built), 1 xfailed (je's API answers before it commits; request filed). Agent adds a node type, adds an element, tags a dish, edits a dish, locked tier: all pass through both services with no restart. cj's built widget is served at `/widget/` and passes a browser run of every flow (15:20 ET) |
 
 ## What other lanes can rely on now
 
@@ -88,6 +88,13 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
   shell pipeline); fixed 70 seconds later in PR #14. Proof runs now use `set -o pipefail`.
 - 15:06 This laptop's ports 8000 and 8080 belong to unrelated programs, so its git-ignored
   `.env` uses 8010 (fake model) and 8082 (Serve API). Nothing committed depends on that.
+- 15:15 A text that only names a preset (a goal button label, a nav label, "See the menu")
+  is served as that preset with no model call. Found in the browser run: the "See the
+  menu" chip, which eight catalog entries suggest, returned the gap surface.
+- 15:18 A configured form with no `title` and no `rail_label` is titled from its node name.
+- 15:18 Integration checks run other lanes' pushed branches from throwaway git worktrees;
+  nothing in their lanes is edited. Their built `dist/` folders are copied (git-ignored)
+  so the local Serve API serves the real widget.
 - 14:50 `X-CAC-Channel` is ignored when a forwarding header is present, so a request through
   a tunnel or proxy on the box can never pass as `mcp` or `prewarm`.
 - 14:50 A database outage answers HTTP 503 `{"detail": "database unavailable"}`; an
@@ -97,6 +104,12 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 
 - `blake-to-nico-01-serve-start` (15:08): `box/up.sh` must start `cac_serve.main:app` and
   run `make seed` first; asks for the 30-intent and canary proofs on the box.
+
+- `blake-to-je-01-commit-before-answer` (15:20): his API answers before its transaction
+  commits; default `rail_label`; what wp5's topics and pre-warm should read and send.
+- `blake-to-cj-01-widget-nav` (15:20): render `bootstrap.nav`; two cosmetic points.
+- `blake-to-nico-02-gift-card-plan` (15:20): `rail_label`, `required` and `options` in the
+  agent's gift-card plan.
 
 ## Requests handled
 

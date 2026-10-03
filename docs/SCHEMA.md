@@ -547,6 +547,11 @@ Presets are fixed surfaces served with no model call:
 | `contact` | `LocationCard` + `HoursCard` | P1 |
 | `reviews` | `ReviewHighlights` | P1 |
 
+A typed text that only names a preset is served as that preset, by code, with no model
+call and `kind: "preset"`: a goal button's `cta_label` ("Book a table"), a `/v1/bootstrap`
+nav label ("Menu", "Hours"), or a whole-menu ask ("See the menu", "what's on the menu?").
+The widget sends a clicked chip as text, so this is what makes every suggested chip resolve.
+
 Embed on the existing site:
 
 ```html

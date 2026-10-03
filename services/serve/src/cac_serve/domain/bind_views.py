@@ -6,6 +6,7 @@ nothing to show for it. All text is a graph fact or a fixed template.
 
 from __future__ import annotations
 
+import re
 from datetime import date
 
 from cac_serve.domain import hours, templates
@@ -25,6 +26,13 @@ _FIELD_KEYS = ("name", "type", "label", "required", "options")
 _PROSE_PROPS = ("details", "description")
 _NO_CARD_LABELS = ("UIComponent",)
 
+
+
+def _plain_name(name: str) -> str:
+    """A form with no title or rail label is titled from its node name: "GiftCardRequest"
+    reads "Gift card request"."""
+    words = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", name or "").replace("_", " ").split()
+    return " ".join(words).capitalize() or "Form"
 
 def _present(slots: dict, keys: tuple[str, ...]) -> dict:
     return {key: slots[key] for key in keys if slots.get(key) is not None}
@@ -226,7 +234,7 @@ def bind_form_card(graph: Graph, sel: dict, _slots: dict, _today: date) -> Bound
         component="FormCard",
         data={
             "form": entry.id,
-            "title": own_title or entry.props.get("rail_label") or "Form",
+            "title": own_title or entry.props.get("rail_label") or _plain_name(entry.name),
             "fields": fields,
             "submit_label": entry.props.get("submit_label") or "Send",
         },
