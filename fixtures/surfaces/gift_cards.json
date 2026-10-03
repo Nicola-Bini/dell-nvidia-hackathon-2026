@@ -81,7 +81,7 @@
           "handler": "server"
         }
       ],
-      "text": "Request a gift card: give your name, a contact, and an amount ($25 or $50)."
+      "text": "Request a gift card: Your name, Email or phone, Amount."
     },
     {
       "id": "v3",
