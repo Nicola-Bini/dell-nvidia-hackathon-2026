@@ -47,7 +47,10 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 
 ## Requests handled
 
-None yet.
+- `nico-to-blake-01-serve-port` (14:48): accepted as proposed. The Serve API listens on
+  `SERVE_PORT` (8080 on laptops, 8082 on the box); `.env.example`, OWNERSHIP seam 3 and
+  SCHEMA section 2 say so. Box model notes (Ollama, `qwen3.6:35b`, no embedder) are in
+  `.env.example` and OWNERSHIP seam 6; the model client sends `reasoning_effort: "none"`.
 
 ## Blocked on
 

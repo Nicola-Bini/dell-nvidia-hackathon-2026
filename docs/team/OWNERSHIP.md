@@ -67,6 +67,9 @@ add `pythonpath = ["../../packages/cac_common"]` under `[tool.pytest.ini_options
 
 ### 3. Serve API (owner: blake; consumers: cj, nico, je)
 
+- Port: `SERVE_PORT`, 8080 on laptops and **8082 on the box** (the OpenShell gateway holds
+  8080 there). Never hard-code the port: every caller uses `SERVE_BASE_URL`, and the widget
+  uses the origin it was loaded from.
 - Endpoints, pipeline and rules: SCHEMA section 8.5. Surface shape: section 8.4. One golden
   file per case in `fixtures/surfaces/`, and `fixtures/surfaces/index.json` maps intent
   text to its file. Conventions: `fixtures/README.md`.
@@ -116,6 +119,10 @@ add `pythonpath = ["../../packages/cac_common"]` under `[tool.pytest.ini_options
   full-text search.
 - Box: `nico` records the real endpoint, model id, embedder, vector length and the measured
   latencies in `docs/team/status/nico.md`. Blake reads them from there.
+- Measured on the box: Ollama at `http://127.0.0.1:11434/v1`, model `qwen3.6:35b`, no
+  embedder (full-text fallback, `EMBED_BASE_URL` empty). The Serve API sends
+  `response_format` with a JSON Schema and turns thinking off with both
+  `reasoning_effort: "none"` (Ollama) and `chat_template_kwargs` (vLLM).
 
 ### 7. The box (owner: nico; consumers: everyone at integration)
 

@@ -17,11 +17,12 @@ _DEFAULTS = {
     "SERVE_DATABASE_URL": "postgresql://cac_serve:cac_serve_dev@127.0.0.1:54320/cac",
     "OWNER_DATABASE_URL": "postgresql://cac_owner:cac_owner_dev@127.0.0.1:54320/cac",
     "LLM_BASE_URL": "http://127.0.0.1:8000/v1",
-    "LLM_MODEL": "nvidia/Qwen3.6-35B-A3B-NVFP4",
+    "LLM_MODEL": "qwen3.6:35b",
     "MODEL_MAX_INFLIGHT": "4",
     "EMBED_BASE_URL": "",
     "EMBED_MODEL": "bge-m3",
     "EMBED_DIM": "1024",
+    "SERVE_PORT": "8080",
     "SERVE_BASE_URL": "http://127.0.0.1:8080",
     "OWNER_BASE_URL": "http://127.0.0.1:8081",
     "OWNER_TOOLS_TOKEN": "dev-agent-token",
@@ -46,6 +47,7 @@ class Settings:
     embed_base_url: str
     embed_model: str
     embed_dim: int
+    serve_port: int
     serve_base_url: str
     owner_base_url: str
     owner_tools_token: str
@@ -93,6 +95,7 @@ def load_settings(environ: dict[str, str] | None = None) -> Settings:
         embed_base_url=get("EMBED_BASE_URL"),
         embed_model=get("EMBED_MODEL"),
         embed_dim=int(get("EMBED_DIM")),
+        serve_port=int(get("SERVE_PORT")),
         serve_base_url=get("SERVE_BASE_URL"),
         owner_base_url=get("OWNER_BASE_URL"),
         owner_tools_token=get("OWNER_TOOLS_TOKEN"),

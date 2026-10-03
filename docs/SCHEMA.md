@@ -39,12 +39,12 @@ and props, tags on existing data, edits, and new elements (sections 4, 7 and 8.6
 
 | Process | Stack | Port | Database role | Reachable from |
 |---|---|---|---|---|
-| Serve API | Python 3.12, FastAPI, psycopg 3 with raw SQL (no ORM) | 8080 | `cac_serve` | Site visitors; MCP server on localhost |
+| Serve API | Python 3.12, FastAPI, psycopg 3 with raw SQL (no ORM) | `SERVE_PORT`: 8080 on laptops, 8082 on the box (the OpenShell gateway holds 8080 there) | `cac_serve` | Site visitors; MCP server on localhost |
 | Owner tools API | Python, FastAPI | 8081 | `cac_owner` | The sandboxed agent and the owner's browser on the local network. Never tunnelled |
 | MCP server | Node 22, from Anthropic's MCP Apps quickstart | 8090 | none (calls Serve API) | The tunnel: only `/mcp` |
 | Widget | Vite, React, TypeScript; served by the Serve API at `/widget/` | — | — | Browser iframe; also built as one HTML file for the MCP App |
 | Postgres + pgvector | Docker | 127.0.0.1:5432 | — | Local processes only |
-| Model server | vLLM managed by NemoClaw (OpenAI-compatible) | 8000 | — | Serve API and NemoClaw |
+| Model server | On the box: Ollama, OpenAI-compatible, model `qwen3.6:35b` (the plan was vLLM; the box has none). Laptops: `tools/fake_llm` | 11434 on the box, 8000 on laptops | — | Serve API and NemoClaw |
 | Embedder | Local embedding model (decided in the first-30-minute checks) | — | — | Serve API, Owner tools API |
 | Agent | OpenClaw agent in a NemoClaw / OpenShell sandbox | — | none (calls Owner tools API) | Owner channel |
 
@@ -67,6 +67,7 @@ Environment:
 | `MODEL_MAX_INFLIGHT` | Cap on concurrent model calls from the Serve API |
 | `INTENT_MAX_CHARS` | 300 |
 | `CAC_ALLOWED_ORIGINS` | Origins allowed to embed the widget |
+| `SERVE_PORT`, `SERVE_BASE_URL` | Where the Serve API listens and how other processes reach it |
 | `GAP_ASK_MIN_SESSIONS` | Distinct sessions before a gap is put to the owner (1 for the demo, 3 normally) |
 
 Start order, each gated on a health check: Postgres, embedder, Owner tools API, Serve API,
@@ -683,7 +684,8 @@ Schema-building rules:
   and these enums are read from `kg_public` on every request, so a label or element the agent
   added is selectable on the first request after publish.
 - Request settings: temperature 0, `max_tokens` 96, thinking disabled per request with
-  `chat_template_kwargs: {"enable_thinking": false}`, compact JSON (on vLLM set
+  `reasoning_effort: "none"` (Ollama, the box) and
+  `chat_template_kwargs: {"enable_thinking": false}` (vLLM), compact JSON (on vLLM set
   `disable_any_whitespace` in the structured-output config). Confirm in the first 30 minutes
   that the schema is still enforced with thinking off.
 - The system prompt is stable (catalog `use_when` lines first, then candidates as

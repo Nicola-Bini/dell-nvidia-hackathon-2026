@@ -1,6 +1,6 @@
 # Shared targets only. Each lane keeps its own commands inside its own directory
 # (see the lane file in docs/team/lanes/), so nobody but Blake needs to edit this file.
-.PHONY: hooks env db-up db-reset db-check seed lane-check fixtures-check
+.PHONY: hooks env db-up db-reset db-check seed serve fake-llm lane-check fixtures-check
 
 hooks:            ## enable the pre-push lane guard
 	git config core.hooksPath .githooks
@@ -26,6 +26,14 @@ db-check:         ## privacy invariant: the serving role cannot read kg, leads o
 
 seed: env         ## load demo/kenmore into the graph and publish (safe to re-run)
 	uv run --project tests python scripts/seed.py
+
+serve: env        ## run the Serve API on SERVE_PORT (default 8080; the box uses 8082)
+	cd services/serve && PYTHONPATH=src:../../packages/cac_common \
+	  uv run uvicorn cac_serve.main:app --host $${SERVE_HOST:-127.0.0.1} \
+	  --port $${SERVE_PORT:-$$(sed -n 's/^SERVE_PORT=//p' ../../.env | tail -1 | grep . || echo 8080)}
+
+fake-llm:         ## laptop stand-in for the model on 127.0.0.1:8000
+	uv run tools/fake_llm/server.py --port 8000
 
 lane-check:       ## this branch only touches its own lane
 	tools/lane-check
