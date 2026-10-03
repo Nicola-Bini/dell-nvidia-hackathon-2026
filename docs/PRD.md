@@ -241,6 +241,11 @@ Acceptance:
 - Uncached typed intent returns in under 2.5 s at median with one request in flight on the
   box; cached in under 200 ms; clicks in under 100 ms. Replace these targets with measured
   numbers after the first-hour benchmark.
+  Measured on the box at 14:45 (nico's selection benchmark, `qwen3.6:35b` on Ollama, one
+  constrained completion per intent): median 0.25 s and p95 0.30 s with one request in
+  flight; median 0.96 s and p95 1.06 s with four, because Ollama serves one request at a
+  time. Measured on a laptop: retrieval, binding and logging add 6 to 30 ms; a cache hit
+  or a preset returns in under 10 ms.
 - 30 fixture intents: 100% schema-valid, at least 27 routed to the right component.
 - An unverified diet claim is never shown as fact. An allergen question never yields a list of
   safe dishes.
