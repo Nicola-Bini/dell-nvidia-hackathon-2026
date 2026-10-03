@@ -2,21 +2,19 @@
 
 Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 
-**Read this first.** wp1 to wp6 are built and green on this branch (15:15 ET). They are not on
-`main` yet because the laptop has no `gh` login, so no PR could be opened. Je: please run
-`gh auth login` on the laptop; the PR and merge take one minute after that. Until then nico
-and blake cannot call this API from `main`. The same commits are on the remote branch
-`je/wp4-owner-actions` (wp1 to wp4) and `je/wp5-topics-gaps` (wp1 to wp6).
+wp1 to wp6 are merged ([#18](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/18)).
+Re-run on the latest `origin/main` at 15:30 ET: `cd services/owner && uv run pytest` -> 156 passed;
+`tools/lane-check` passes. The Owner API ran end to end with the real Serve API (see "Run it").
 
 | Package | State | PR | Proof and result |
 |---|---|---|---|
-| wp1 Skeleton and tiers | built, unmerged | none yet (no `gh` login) | `cd services/owner && uv run pytest tests/test_tiers.py tests/test_auth.py` -> 30 tier cells (10 rows x 3 modes) plus auth: agent token refused (403) on approve, reject, revert, verify and the inbox |
-| wp2 Read endpoints | built, unmerged | none yet | `uv run pytest tests/test_read_endpoints.py` -> 14 passed: a Customer node and a Goal are never returned to the agent token (search by text, by label, via edges) |
-| wp3 Change engine | built, unmerged | none yet | `uv run pytest tests/test_change_engine.py tests/test_agent_client_shapes.py` -> SCHEMA 10 "Agent tags a dish" and "Agent tries the locked tier" plus all ten actions and nico's gift-card plan |
-| wp4 Owner-only actions and inbox | built, unmerged | none yet | `uv run pytest tests/test_owner_actions.py tests/test_inbox.py` -> "Agent adds a node type", "Agent adds an element", "Agent edits a dish" (approve, then revert restores the old text), verify gives the badge, inbox HTML and JSON |
-| wp5 Topics, gaps, the owner's words | built, unmerged | none yet | `uv run pytest tests/test_gap_loop.py` -> "Gap loop" up to publish; topics never contain raw visitor text (canary test) |
-| wp6 Demo seeding | built, unmerged | none yet | `uv run pytest tests/test_demo_seed.py` -> seeding makes `/owner/gaps` and `/owner/topics` show parking (5) and gift cards (12) |
-| Integration on Blake's real seed | green | none yet | `uv run pytest tests/test_real_seed.py` -> 7 passed on the real Kenmore seed and registry from `scripts/seed.py` |
+| wp1 Skeleton and tiers | merged | [#18](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/18) | `cd services/owner && uv run pytest tests/test_tiers.py tests/test_auth.py` -> 30 tier cells (10 rows x 3 modes) plus auth: agent token refused (403) on approve, reject, revert, verify and the inbox |
+| wp2 Read endpoints | merged | [#18](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/18) | `uv run pytest tests/test_read_endpoints.py` -> 14 passed: a Customer node and a Goal are never returned to the agent token (search by text, by label, via edges) |
+| wp3 Change engine | merged | [#18](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/18) | `uv run pytest tests/test_change_engine.py tests/test_agent_client_shapes.py` -> SCHEMA 10 "Agent tags a dish" and "Agent tries the locked tier" plus all ten actions and nico's gift-card plan |
+| wp4 Owner-only actions and inbox | merged | [#18](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/18) | `uv run pytest tests/test_owner_actions.py tests/test_inbox.py` -> "Agent adds a node type", "Agent adds an element", "Agent edits a dish" (approve, then revert restores the old text), verify gives the badge, inbox HTML and JSON |
+| wp5 Topics, gaps, the owner's words | merged | [#18](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/18) | `uv run pytest tests/test_gap_loop.py` -> "Gap loop" up to publish; topics never contain raw visitor text (canary test) |
+| wp6 Demo seeding | merged | [#18](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/18) | `uv run pytest tests/test_demo_seed.py` -> seeding makes `/owner/gaps` and `/owner/topics` show parking (5) and gift cards (12) |
+| Integration on Blake's real seed | green | [#18](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/18) | `uv run pytest tests/test_real_seed.py` -> 7 passed on the real Kenmore seed and registry from `scripts/seed.py` |
 
 Whole lane: `cd services/owner && uv run pytest` -> 156 passed (about 40 s). Lint with the repo
 limits (100 columns, complexity 8, 5 parameters): `uvx ruff check --line-length 100 app tests` clean.
@@ -38,6 +36,22 @@ Seed the demo traffic: `uv run python -m app.demo.seed_traffic` (`--reset` remov
   is down the publish still succeeds and the response says `prewarm.skipped`.
 - Inbox: `GET /owner/inbox?token=$OWNER_INBOX_TOKEN` sets an HttpOnly cookie and redirects;
   `GET /owner/inbox.json` with the bearer token returns the same data.
+
+## Run it (no Docker needed)
+
+```
+cd services/owner
+uv run python dev/run_local.py --reset   # first run; drop --reset to keep data
+```
+
+Starts embedded Postgres + pgvector (data in `~/.cac-dev/pgdata`), applies `db/schema.sql`, loads
+the real Kenmore seed, adds the demo gap traffic, then runs the fake model (8000), the Serve API
+(8080) and the Owner API (8081). It prints the inbox URL with the owner token. The box uses Docker
+(`make db-up seed`); this is for laptops. Trigram typo matching is off locally (no `pg_trgm`).
+
+Verified 15:34 ET: parking is a gap, the owner's answer is recorded through `/owner/answers`,
+`/owner/publish` returns `prewarm.planned: 42`, and the same question then returns `Answer` with
+`verified: true` from the real Serve API, with no restart.
 
 ## Measured numbers
 
@@ -90,5 +104,4 @@ None addressed to `je` yet.
 
 ## Blocked on
 
-- `NEED_INPUT: please run gh auth login on this laptop, so the agent can open and merge the PR for wp1 to wp6 (AGENTS.md section 8).`
-  Nothing else is blocked: wp7 (P1) starts after the 18:30 gate.
+Nothing. wp7 (P1) starts after the 18:30 gate.
