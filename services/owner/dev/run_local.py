@@ -15,6 +15,7 @@ import os
 import pathlib
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -116,6 +117,18 @@ def children(args: argparse.Namespace, env: dict[str, str]) -> list[tuple[str, l
     ]
 
 
+def ports_in_use(env: dict[str, str], no_serve: bool) -> list[int]:
+    """Ports this script needs that something is already listening on."""
+    llm_port = int(env["LLM_BASE_URL"].rstrip("/").removesuffix("/v1").rsplit(":", 1)[-1])
+    wanted = [int(env["OWNER_PORT"])] + ([] if no_serve else [int(env["SERVE_PORT"]), llm_port])
+    busy = []
+    for port in wanted:
+        with socket.socket() as sock:
+            if sock.connect_ex(("127.0.0.1", port)) == 0:
+                busy.append(port)
+    return busy
+
+
 def prepare_database(args: argparse.Namespace, env: dict[str, str]):
     """Start embedded Postgres, create and seed it on first run. Returns (server, urls)."""
     if args.reset and DATA.exists():
@@ -147,6 +160,11 @@ def main() -> int:
     env = load_env()
     env.setdefault("SERVE_PORT", "8080")
     env.setdefault("OWNER_PORT", "8081")
+    busy = ports_in_use(env, args.no_serve)
+    if busy:
+        print(f"Port(s) {busy} are already in use: the stack is probably already running. "
+              "Stop it first (Ctrl+C in its terminal). Nothing was changed.")
+        return 1
     pg, owner_url, serve_url = prepare_database(args, env)
     child_env = {**env, "OWNER_DATABASE_URL": owner_url, "SERVE_DATABASE_URL": serve_url,
                  "PYTHONPATH": "src" + os.pathsep + str(ROOT / "packages" / "cac_common")}
