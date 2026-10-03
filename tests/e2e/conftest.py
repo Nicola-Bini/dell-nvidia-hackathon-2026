@@ -21,7 +21,7 @@ from cac_common.settings import Settings, get_settings
 def _answers(base_url: str, path: str) -> bool:
     try:
         response = httpx.get(f"{base_url}{path}", timeout=2.0)
-        return response.status_code == 200 and response.json().get("status") is not None
+        return response.status_code == 200 and isinstance(response.json(), dict)
     except (httpx.HTTPError, ValueError, AttributeError):
         return False
 
