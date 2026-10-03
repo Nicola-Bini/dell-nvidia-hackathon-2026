@@ -5,7 +5,7 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 | Package | State | PR | Proof and result |
 |---|---|---|---|
 | wp1 | merged-pending (PR needs `gh auth login`) | — | `box/checks.sh` -> ALL CHECKS PASSED (embedder WARN, decision below) |
-| wp2 | built, PR pending login | — | `uv run bench/selection_bench.py` -> table below |
+| wp2 | merged | PR in this branch | `uv run bench/selection_bench.py` -> table below |
 
 ## Measured numbers
 
