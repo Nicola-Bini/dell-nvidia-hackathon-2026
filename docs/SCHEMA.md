@@ -461,6 +461,12 @@ Two additions, both code and never the model:
   the contact form. No other `UIComponent` and no `BrandTrait` is ever a candidate.
 - **Slots add entries.** A `date` or `time` slot adds every hours node; `party_size` adds the
   reservations Service; `headcount` adds the catering Service.
+- **Hours words add entries.** "open", "close", "hours" and their variants add every hours
+  node, so "what are your hours" is never forced to a gap.
+- **Fallback scoring.** A token that matches a node's name scores 4, a match elsewhere in
+  `search_text` scores 1, `ts_rank` breaks ties, and entries under 30% of the best score are
+  dropped. Trigram matching is a typo path only (tokens of four or more characters that
+  match nothing by full text). Business is an entry only on a name match.
 
 ## 7. UI component catalog
 
