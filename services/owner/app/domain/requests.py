@@ -4,8 +4,9 @@ import json
 import re
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
+from app.domain.compat import normalize
 from app.domain.tiers import ACTIONS
 
 ID_RE = re.compile(r"^[a-z][a-z0-9_]{1,63}$")
@@ -27,6 +28,11 @@ class ChangeRequest(BaseModel):
     after: dict[str, Any] = Field(default_factory=dict)
     reason: str = Field(min_length=1, max_length=500)
     evidence: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _accept_client_shapes(cls, raw: Any) -> Any:
+        return normalize(raw)
 
     @field_validator("after", "evidence")
     @classmethod
