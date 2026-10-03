@@ -18,6 +18,7 @@ from cac_common.settings import Settings, get_settings
 from fastapi.testclient import TestClient
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+os.environ.setdefault("CAC_WARMUP", "0")  # tests start hundreds of apps: no model warm-up
 SURFACES = REPO_ROOT / "fixtures" / "surfaces"
 INTENTS = REPO_ROOT / "demo" / "kenmore" / "intents.yaml"
 TODAY = date(2026, 10, 3)  # every date-dependent test is pinned to this day (SCHEMA 8.2)

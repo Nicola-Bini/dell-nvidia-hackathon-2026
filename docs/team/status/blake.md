@@ -38,6 +38,11 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 
 ## Measured numbers
 
+- 15:28 After the hardening PR, real model on a laptop (Ollama `qwen2.5:7b`): 29 of 30
+  intents (only "do you do brunch?" goes to HoursCard), and `tests/e2e` -> 9 passed against
+  a Serve API on that model: the gift-card type and form, the dish tag, the dish edit and the
+  gap loop all work with a real model, with no restart.
+
 - Real model on a laptop (Ollama `qwen2.5:7b`, 7B, far smaller than the box's 35B): 28 of 30
   intents, 30 of 30 schema-valid, every section 10 safety row green. Structured output over
   Ollama's `/v1/chat/completions` with `response_format: json_schema` is enforced. Typical
@@ -95,6 +100,16 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 - 15:18 Integration checks run other lanes' pushed branches from throwaway git worktrees;
   nothing in their lanes is edited. Their built `dist/` folders are copied (git-ignored)
   so the local Serve API serves the real widget.
+- 15:25 A `MenuList` with no diet, no section and no named items is invalid (the model is
+  retried with that error): a small model answered "kids menu" with the first 12 dishes.
+  The whole menu is the `menu` preset.
+- 15:25 The Serve API warms the model once at start-up, in the background (a cold Ollama
+  load took longer than the 6 s request timeout and the first visitor got the busy
+  fallback). `CAC_WARMUP=0` turns it off. nico: keep the model loaded on the box
+  (`OLLAMA_KEEP_ALIVE=-1`), and consider `MODEL_MAX_INFLIGHT=8`, since Ollama queues
+  requests and eight queued calls at 0.25 s each still finish well inside the timeout.
+- 15:25 The prompt gained the SCHEMA 8.1 gift-card example (ListCard plus FormCard) and a
+  "not in the data means gap" example.
 - 14:50 `X-CAC-Channel` is ignored when a forwarding header is present, so a request through
   a tunnel or proxy on the box can never pass as `mcp` or `prewarm`.
 - 14:50 A database outage answers HTTP 503 `{"detail": "database unavailable"}`; an

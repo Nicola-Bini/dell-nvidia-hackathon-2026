@@ -73,6 +73,9 @@ def _clean_menu(ctx: _Ctx, view: dict, entry: Node) -> tuple[dict, list[str]]:
             errors.append(error)
         else:
             items.append(item_id)
+    if not errors and diet is None and section is None and not items:
+        errors.append("MenuList needs a diet, a section or named items; if the data has no "
+                      "line for what was asked, reply with kind gap")
     clean = {"component": "MenuList", "diet": diet, "section": section, "items": items,
              "order": view.get("order") is True}
     return clean, errors
