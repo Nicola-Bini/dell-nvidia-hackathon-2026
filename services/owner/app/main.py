@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 
 from cac_common.settings import Settings, get_settings
-from app.routes import changes, health, inbox, owner_only, reads
+from app.routes import changes, health, inbox, loop, owner_only, reads
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -14,11 +14,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     "owner's inbox uses OWNER_INBOX_TOKEN. Every write is a change record.",
     )
     app.state.settings = settings or get_settings()
+    app.state.serve_transport = None  # tests inject an httpx transport for the pre-warm
     app.include_router(health.router)
     app.include_router(owner_only.router)
     app.include_router(reads.router)
     app.include_router(changes.router)
     app.include_router(inbox.router)
+    app.include_router(loop.router)
     return app
 
 

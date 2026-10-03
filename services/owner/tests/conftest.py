@@ -3,6 +3,7 @@
 import pathlib
 import tempfile
 
+import httpx
 import psycopg
 import pgserver
 import pytest
@@ -35,7 +36,7 @@ LABELS = [  # label, may_be_public, public_props, locked
 ]
 EDGE_TYPES = [("HAS_SECTION", []), ("HAS_ITEM", ["position"]), ("SUITABLE_FOR", []),
               ("CONTAINS_ALLERGEN", []), ("OFFERS", []), ("ANSWERS", []), ("ADVANCES", []),
-              ("ABOUT", []), ("PAIRS_WITH", [])]
+              ("ABOUT", []), ("PAIRS_WITH", []), ("HAS_HOURS", [])]
 NODES = [  # id, label, name, props, visibility, status
     ("biz_demo", "Business", "The Kenmore", {"cuisine": "Pub", "supplier": "Sysco"}, "public"),
     ("mi_risotto", "MenuItem", "Mushroom Risotto",
@@ -49,6 +50,10 @@ NODES = [  # id, label, name, props, visibility, status
     ("cust_canary", "Customer", "ZZ-CANARY-Customer", {"contact": "canary@example.com"},
      "private"),
 ]
+
+
+def serve_is_down(request: httpx.Request) -> httpx.Response:
+    raise httpx.ConnectError("serve api is not running in tests", request=request)
 
 
 def make_settings(url: str, **kw) -> Settings:
@@ -109,7 +114,9 @@ def db(pg):
 @pytest.fixture()
 def make_client(pg, db):
     def build(**kw) -> TestClient:
-        return TestClient(create_app(make_settings(pg["owner"], **kw)))
+        app = create_app(make_settings(pg["owner"], **kw))
+        app.state.serve_transport = httpx.MockTransport(serve_is_down)  # no real network
+        return TestClient(app)
     return build
 
 

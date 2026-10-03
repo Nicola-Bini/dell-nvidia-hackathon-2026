@@ -41,6 +41,7 @@ class Plan:
     target: str
     before: dict | None
     decision: TierDecision
+    actor: str = "agent"
 
 
 def record_change(conn: psycopg.Connection, biz: str, req: ChangeRequest, plan: Plan,
@@ -50,10 +51,14 @@ def record_change(conn: psycopg.Connection, biz: str, req: ChangeRequest, plan: 
         evidence["refusal"] = plan.decision.reason
     row = conn.execute(
         "INSERT INTO kg.change (business_id, actor, action, target, before, after, reason,"
-        " evidence, tier, state) VALUES (%s, 'agent', %s, %s, %s, %s, %s, %s, %s, %s)"
-        " RETURNING id",
-        (biz, req.action, plan.target, Jsonb(plan.before) if plan.before is not None else None,
-         Jsonb(req.after), req.reason, Jsonb(evidence), plan.decision.tier, state)).fetchone()
+        " evidence, tier, state, decided_by, decided_at) VALUES (%(biz)s, %(actor)s, %(action)s,"
+        " %(target)s, %(before)s, %(after)s, %(reason)s, %(evidence)s, %(tier)s, %(state)s,"
+        " CASE WHEN %(actor)s = 'owner' THEN 'owner' END,"
+        " CASE WHEN %(actor)s = 'owner' THEN now() END) RETURNING id",
+        {"biz": biz, "actor": plan.actor, "action": req.action, "target": plan.target,
+         "before": Jsonb(plan.before) if plan.before is not None else None,
+         "after": Jsonb(req.after), "reason": req.reason, "evidence": Jsonb(evidence),
+         "tier": plan.decision.tier, "state": state}).fetchone()
     return row["id"]
 
 

@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from app.auth import require_agent
 from app.domain.requests import ChangeError, ChangeRequest
 from app.infra.db import get_conn
+from app.routes.common import respond
 from app.services import change_engine
 
 router = APIRouter(prefix="/owner", tags=["agent writes"], dependencies=[Depends(require_agent)])
@@ -21,4 +22,4 @@ def post_change(req: ChangeRequest, request: Request,
     except ChangeError as err:
         conn.rollback()
         return JSONResponse({"detail": err.message}, status_code=err.status)
-    return JSONResponse(result.body(), status_code=403 if result.tier == "locked" else 200)
+    return respond(request, conn, result.body(), 403 if result.tier == "locked" else 200)
