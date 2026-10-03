@@ -8,7 +8,7 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 | wp2 | merged | [#4](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/4) | `uv run bench/selection_bench.py` -> median 0.25 s, p95 0.30 s at 1; 0.96/1.07 at 4 |
 | wp3 | partial: agent runs in the sandbox, hello not yet sent | this PR | `box/agent_install.sh` -> the sandboxed agent reads `/owner/digest` from je's API; `hermes chat -q` turn with one tool call: 23.7 s cold, **7.0 s warm**. Telegram hello: the owner sends it (see Blocked on) |
 | wp4 | merged, proven on real APIs | [#7](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/7), [#23](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/23) | `box/demo_reset.sh && python3 -m unittest discover -s agent/tests -v` -> 3 OK against je's Owner API and the real Serve API on the box (15:45 ET): parking asked, answered, published, and "is there parking near you?" returns the owner's words; gift-card plan -> pending create_label, 2 create_node, create_component |
-| wp5 | partial | [#12](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/12) | `box/up.sh` -> ALL UP on the real stack (postgres, seed, model, owner, serve). Sandbox parts (`box/egress_demo.sh`, `box/recover.sh`, policy apply) unproven: need the NemoClaw lock |
+| wp5 | sandbox proofs pass; digest heartbeat pending | this PR | `box/egress_demo.sh` -> 7 PASS (16:10 ET): `/owner/**` allowed; `/openapi.json` on the same port, example.com, github.com, the database, the Serve API and the model server all refused. `box/recover.sh` after killing the Owner API, Serve API and llama-server -> ALL UP in 24 s |
 | wp6 | partial: deployed, load-tested | [#23](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/23) | `box/up.sh` -> ALL UP; `uv run bench/load_test.py -n 24` -> table below, 0 errors at 4 concurrent. Agent-turn-in-flight row waits on wp3 |
 
 ## Measured numbers
@@ -48,6 +48,12 @@ Box: Dell GB10, aarch64, 121 GB unified memory (about 89 GB available with qwen3
   `/v1/metrics` after the intents run: p50 12 ms, p95 516 ms, cache hit rate 0.71.
 
 ## Decisions
+
+- OpenShell rule `cac_owner_api` uses explicit GET/POST `/owner/**` rules and no access
+  preset: the `read-write` preset silently allowed every path on the port (the egress demo
+  caught `/openapi.json` getting through). `box/agent_install.sh` removes and re-adds it.
+- `box/lib.sh` starts services with `setsid` and no inherited descriptors; before, a caller
+  piping `box/up.sh` hung until the services exited.
 
 - Agent sandbox is `blake3` (owner's call, 15:55): NemoClaw with the **Hermes** runtime, not
   OpenClaw; owner channel is **Telegram** (cut line 5 in effect). `box/agent_install.sh`

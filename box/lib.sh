@@ -19,6 +19,7 @@ wait_http() { # url, seconds
 step() { # name url seconds start-command...
   local name=$1 url=$2 secs=$3; shift 3
   if alive "$url"; then echo "OK   $name (already up)"; return 0; fi
-  [ $# -gt 0 ] && nohup "$@" >"$LOGDIR/$name.log" 2>&1 &
+  # setsid and no inherited fds, so a caller piping our output is not held open by the service
+  if [ $# -gt 0 ]; then setsid nohup "$@" >"$LOGDIR/$name.log" 2>&1 </dev/null & fi
   if wait_http "$url" "$secs"; then echo "OK   $name"; else echo "FAIL $name ($url)"; return 1; fi
 }

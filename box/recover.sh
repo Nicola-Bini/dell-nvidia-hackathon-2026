@@ -14,9 +14,10 @@ if openshell status >/dev/null 2>&1; then echo "OK   openshell gateway"
 else echo "FAIL openshell gateway"; exit 1; fi
 
 if [ -n "$SANDBOX" ]; then
-  nemoclaw "$SANDBOX" recover >"$LOGDIR/recover.log" 2>&1 \
-    || nemoclaw "$SANDBOX" start >>"$LOGDIR/recover.log" 2>&1
-  if nemoclaw "$SANDBOX" exec --no-tty -- true >/dev/null 2>&1; then echo "OK   sandbox $SANDBOX"
+  timeout 180 nemoclaw "$SANDBOX" recover >"$LOGDIR/recover.log" 2>&1 \
+    || timeout 180 nemoclaw "$SANDBOX" start >>"$LOGDIR/recover.log" 2>&1
+  if OPENSHELL_GATEWAY=nemoclaw openshell sandbox exec --name "$SANDBOX" -- true \
+      </dev/null >/dev/null 2>&1; then echo "OK   sandbox $SANDBOX"
   else echo "FAIL sandbox $SANDBOX (see $LOGDIR/recover.log)"; exit 1; fi
 else echo "WARN no sandbox registered yet"; fi
 
