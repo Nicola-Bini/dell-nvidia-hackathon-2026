@@ -11,7 +11,24 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 | wp5 Actions and presets | merged | [#10](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/10) | `cd services/serve && uv run pytest tests/actions tests/api` -> lead row exists (read as `cac_owner`), past date is 422, fourth lead in an hour is 429, presets bound from the graph, CTA counted (14:54 ET) |
 | wp6 Safety and steer | merged | [#10](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/10) | `cd services/serve && uv run pytest tests/intents/test_section10.py tests/binder/test_binder_safety.py` -> green: unverified diet never a badge, allergen never a dish list, goal steer, generic components for an agent-created label and form (14:54 ET) |
 | wp7 Privacy proofs | merged | [#10](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/10) | `uv run --project tests python scripts/canary.py` -> exit 0, 40 prompts, 47 responses, canary and goals in none; `uv run --project tests python scripts/permission_check.py` -> 5 of 5 reads denied (14:55 ET). MCP tools are probed when `MCP_BASE_URL` is set |
-| wp8 End to end | Serve side merged; five of six loops pass through je's real API; the gap loop waits for je's wp5 | [#15](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/15), [#16](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/16) | `uv run --project tests pytest tests/e2e` (needs `make fake-llm serve`, and je's API on 8081 for the owner half) -> 9 passed, 1 skipped (gap loop through je's API: his wp5 routes are not built), 1 xfailed (je's API answers before it commits; request filed). Agent adds a node type, adds an element, tags a dish, edits a dish, locked tier: all pass through both services with no restart. cj's built widget is served at `/widget/` and passes a browser run of every flow (15:20 ET) |
+| wp8 End to end | merged | [#15](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/15), [#16](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/16), [#20](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/20) | `uv run --project tests pytest tests/e2e` with the Serve API, je's Owner tools API from `main` and cj's built widget -> 10 passed, 1 xfailed (15:32 ET). "Gap loop" and "Agent adds a node type" pass through both services with no restart, and so do adds an element, tags a dish, edits a dish, the locked tier, pre-warm, and `/widget/` served. The xfail is je's (request je-01, item 1). The same on the box: waits for nico's deploy |
+
+## All proofs, last run 15:32 ET on `main` at d1cbf52
+
+| Proof | Result |
+|---|---|
+| `make seed && uv run --project tests pytest tests/graph`, `make db-check` | 79 passed; 3 of 3 denied |
+| `cd services/serve && uv run pytest` | 354 passed |
+| `cd services/serve && uv run pytest -m intents` (fake model) | 15 passed: 30 of 30 valid, 30 of 30 right |
+| same with `CAC_INTENTS_REAL_MODEL=1` on Ollama `qwen2.5:7b` (laptop) | 15 passed: 30 of 30 valid, 29 of 30 right |
+| `uv run --with pytest --with jsonschema pytest tools/fake_llm` | 48 passed |
+| `uv run --project tests python scripts/canary.py` | exit 0: 40 prompts, 47 responses, no leak |
+| `uv run --project tests python scripts/permission_check.py` | every private read denied |
+| `uv run --project tests pytest tests/e2e` | 10 passed, 1 xfailed (je's commit timing) |
+| `make fixtures-check`; `npm test` in `apps/widget` on the current fixtures | OK; 67 passed |
+| `tools/lane-check` | PASS |
+
+Not yet run: any of this on the box with `qwen3.6:35b` (needs nico's deploy of `main`).
 
 ## What other lanes can rely on now
 
@@ -135,7 +152,6 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 
 ## Blocked on
 
-- wp8, owner-API half: je's `/owner/topics`, `/owner/answers` and `/owner/publish` (je wp5)
-  are not on `main`. je and cj have pushed branches but opened no PR; their status says
-  `gh auth login` is needed. Asked Blake (NEED_INPUT, 15:08).
-- 17:00 gate on the box: needs nico to deploy `main` (request above).
+- The 17:00 gate on the box (30 intents on `qwen3.6:35b`, canary, latency): needs nico to
+  deploy `main` and run the commands in `blake-to-nico-01-serve-start`. Nothing else.
+- P1 (wp9) starts only after the 18:30 gate, per the lane file.
