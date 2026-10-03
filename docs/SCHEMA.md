@@ -726,7 +726,9 @@ means lowercase, trim, collapse whitespace, strip punctuation.
    component. On failure retry the model once with the error; on a second failure, a timeout
    (6 s), or more than `MODEL_MAX_INFLIGHT` calls in flight, return the `menu` preset with a
    "we're busy" note and `meta.cache = "preset"`.
-2. **Gap.** For `kind: gap`, return the fixed gap surface: "We haven't confirmed that yet.
+2. **Gap.** An `answer` whose views bind to nothing (a diet with no dishes, a node that is
+   gone) is also a gap, logged with the diet, section or node name as its topic. For
+   `kind: gap`, return the fixed gap surface: "We haven't confirmed that yet.
    Please ask our staff." with the phone link from the Business node. Log `gap_topic`.
 3. **Off topic.** Return the fixed surface "I can help with our menu, hours, bookings and
    catering." with default chips. Logged, never turned into a gap.
