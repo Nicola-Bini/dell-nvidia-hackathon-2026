@@ -1,14 +1,82 @@
 {
+  "topics": [
+    "gift cards",
+    "gift card"
+  ],
   "reason": "Visitors keep asking about {topic} and the graph has no type for it",
   "changes": [
-    {"action": "create_label", "target": {"label": "GiftCard"},
-     "after": {"public_props": ["amounts", "terms"], "may_be_public": true}},
-    {"action": "create_node", "target": {"label": "GiftCard", "node_id": "gc_25"},
-     "after": {"name": "$25 gift card", "amounts": "25", "terms": "Pending owner confirmation"}},
-    {"action": "create_node", "target": {"label": "GiftCard", "node_id": "gc_50"},
-     "after": {"name": "$50 gift card", "amounts": "50", "terms": "Pending owner confirmation"}},
-    {"action": "create_component", "target": {"component": "GiftCardRequest", "base": "FormCard"},
-     "after": {"use_when": "the visitor wants to buy or ask about a gift card",
-               "fields": ["name", "email", "amount"], "submit": "Request a gift card"}}
+    {
+      "action": "create_label",
+      "target": {
+        "label": "GiftCard"
+      },
+      "after": {
+        "public_props": [
+          "amounts",
+          "terms"
+        ],
+        "may_be_public": true
+      }
+    },
+    {
+      "action": "create_node",
+      "target": {
+        "label": "GiftCard",
+        "node_id": "gc_25"
+      },
+      "after": {
+        "name": "$25 gift card",
+        "amounts": "25",
+        "terms": "Pending owner confirmation"
+      }
+    },
+    {
+      "action": "create_node",
+      "target": {
+        "label": "GiftCard",
+        "node_id": "gc_50"
+      },
+      "after": {
+        "name": "$50 gift card",
+        "amounts": "50",
+        "terms": "Pending owner confirmation"
+      }
+    },
+    {
+      "action": "create_component",
+      "target": {
+        "component": "GiftCardRequest",
+        "base": "FormCard"
+      },
+      "after": {
+        "use_when": "the visitor wants to buy or ask about a gift card",
+        "rail_label": "Request a gift card",
+        "submit": "Request a gift card",
+        "fields": [
+          {
+            "name": "name",
+            "label": "Your name",
+            "type": "text",
+            "required": true
+          },
+          {
+            "name": "contact",
+            "label": "Email or phone",
+            "type": "text",
+            "required": true
+          },
+          {
+            "name": "amount",
+            "label": "Amount",
+            "type": "select",
+            "options": [
+              "$25",
+              "$50"
+            ],
+            "required": true
+          }
+        ]
+      }
+    }
   ]
 }

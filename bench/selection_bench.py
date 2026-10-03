@@ -19,7 +19,8 @@ import httpx
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
-BASE = os.environ.get("BOX_LLM_BASE_URL", os.environ.get("LLM_BASE_URL", "http://127.0.0.1:11434/v1"))
+BASE = os.environ.get("BOX_LLM_BASE_URL",
+                      os.environ.get("LLM_BASE_URL", "http://127.0.0.1:11434/v1"))
 MODEL = os.environ.get("BOX_LLM_MODEL", os.environ.get("LLM_MODEL", "qwen3.6:35b"))
 COMPONENTS = ["MenuList", "AllergenNotice", "HoursCard", "Answer", "BookingForm",
               "CateringQuoteForm", "FormCard"]

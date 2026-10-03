@@ -7,20 +7,24 @@ set -u
 rc=0
 
 make -s db-up >"$LOGDIR/db.log" 2>&1
-if make -s db-check >>"$LOGDIR/db.log" 2>&1; then echo "OK   postgres"; else echo "FAIL postgres"; exit 1; fi
+if make -s db-check >>"$LOGDIR/db.log" 2>&1; then echo "OK   postgres"
+else echo "FAIL postgres"; exit 1; fi
+# Seed is an upsert plus publish, safe on every start.
+if make -s seed >"$LOGDIR/seed.log" 2>&1; then echo "OK   seed"
+else echo "FAIL seed (see $LOGDIR/seed.log; an old volume needs make db-reset seed)"; exit 1; fi
 
-step model "${BOX_LLM_BASE_URL:-http://127.0.0.1:11434/v1}/models" 60 || exit 1
+# Serve's model: llama-server on :11436 (box/model.sh says why not Ollama directly).
+box/model.sh >/dev/null || { echo "FAIL model (box/model.sh)"; exit 1; }
+step model "http://127.0.0.1:${BOX_MODEL_PORT:-11436}/health" 120 || exit 1
 
 if [ -n "${EMBED_BASE_URL:-}" ]; then step embedder "$EMBED_BASE_URL/models" 30 || exit 1
 else echo "OK   embedder (full-text fallback, EMBED_BASE_URL empty)"; fi
 
-owner_cmd=(${OWNER_CMD:-uv run --project services/owner uvicorn app.main:app \
-  --host 0.0.0.0 --port "$OWNER_PORT"})
+owner_cmd=(${OWNER_CMD:-uv run --no-dev --directory services/owner python -m app.main})
 step owner "http://127.0.0.1:$OWNER_PORT/openapi.json" 60 "${owner_cmd[@]}" || exit 1
 
-serve_cmd=(${SERVE_CMD:-uv run --project services/serve uvicorn app.main:app \
-  --host 0.0.0.0 --port "$SERVE_PORT"})
-step serve "http://127.0.0.1:$SERVE_PORT/v1/metrics" 60 "${serve_cmd[@]}" || exit 1
+serve_cmd=(${SERVE_CMD:-make serve SERVE_HOST=0.0.0.0})
+step serve "http://127.0.0.1:$SERVE_PORT/healthz" 60 "${serve_cmd[@]}" || exit 1
 
 if [ -n "${MCP_CMD:-}" ]; then step mcp "http://127.0.0.1:8090/health" 30 $MCP_CMD || rc=1; fi
 [ $rc -eq 0 ] && echo "ALL UP"
