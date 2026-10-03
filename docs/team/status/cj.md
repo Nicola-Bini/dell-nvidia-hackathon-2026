@@ -5,7 +5,7 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 | Package | State | PR | Proof and result |
 |---|---|---|---|
 | wp1 Widget shell | merged in this PR | (this PR) | `npm test` in `apps/widget` -> 21 passed (every file in `fixtures/surfaces/` renders); `npm run build` writes `dist/` (14:53 ET) |
-| wp2 Components | building | | |
+| wp2 Components | merged in this PR | (this PR) | `npm test` in `apps/widget` -> 46 passed: a test per component on its golden view, "an unverified badge never shows the verified mark", XSS strings render as text (15:05 ET) |
 | wp3 Demo site and embed | not started | | |
 | wp4 Interaction | not started | | |
 | wp5 Overlay and states | not started | | |
@@ -34,6 +34,10 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
   -> `preset_menu`, hours -> `hours_saturday`, booking and catering -> the form fixtures with
   an empty prefill.
 - 14:50 Node 24 on this laptop; `engines` says `>=22`, matching SCHEMA's Node 22.
+
+- 15:05 Forms keep native `required` attributes, but the widget never blocks a submit in
+  JS: the server's 422 errors are shown next to each field (unknown fields at the top).
+- 15:05 `BookingForm` with a `booking_url` shows only a link to that booking page.
 
 ## Requests handled
 

@@ -26,12 +26,17 @@ function withPrefill(surface: Surface, preset: string): Surface {
 }
 
 const BOOTSTRAP: Bootstrap = {
-  business: { name: "The Kenmore", tagline: "Kenmore Square's neighborhood bar" },
-  theme: { background: "#111111", text: "#FFFFFF", heading: "Engravers", body: "Cormorant Garamond" },
+  business: { name: "The Kenmore", tagline: "We are a local's establishment focusing on craft beer and craft ingredients." },
+  theme: {
+    background: "#111111",
+    text: "#FFFFFF",
+    heading: "Engravers",
+    body: "Cormorant Garamond",
+  },
   nav: [
     { label: "Menu", preset: "menu" },
     { label: "Hours", preset: "hours" },
-    { label: "Book a table", preset: "booking" },
+    { label: "Book", preset: "booking" },
     { label: "Catering", preset: "catering" },
   ],
   chips: ["What's on draft?", "Vegetarian options", "Are you open tonight?"],
@@ -77,7 +82,9 @@ export interface MockOptions {
 /** Serves the golden fixtures exactly as the stub Serve API does (OWNERSHIP seam 3). */
 export function mockTransport(opts: MockOptions = {}): Transport {
   const delay = <T>(value: T) =>
-    new Promise<T>((resolve) => setTimeout(() => resolve(structuredClone(value)), opts.delayMs ?? 0));
+    new Promise<T>((resolve) =>
+      setTimeout(() => resolve(structuredClone(value)), opts.delayMs ?? 0),
+    );
   let leads = 0;
   let ctaClicked = 0;
   return {
@@ -97,7 +104,8 @@ export function mockTransport(opts: MockOptions = {}): Transport {
       const errors = validate(name, (payload ?? {}) as Record<string, unknown>);
       if (errors.length) return delay<ActionResult>({ ok: false, errors });
       leads += 1;
-      return delay<ActionResult>({ ok: true, lead_id: `lead-${leads}`, surface: confirmation(name) });
+      const lead_id = `lead-${leads}`;
+      return delay<ActionResult>({ ok: true, lead_id, surface: confirmation(name) });
     },
     metrics: () =>
       delay<Metrics>({
