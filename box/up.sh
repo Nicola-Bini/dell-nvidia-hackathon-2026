@@ -23,6 +23,14 @@ else echo "OK   embedder (full-text fallback, EMBED_BASE_URL empty)"; fi
 owner_cmd=(${OWNER_CMD:-uv run --no-dev --directory services/owner python -m app.main})
 step owner "http://127.0.0.1:$OWNER_PORT/openapi.json" 60 "${owner_cmd[@]}" || exit 1
 
+# Widget and demo site: git-ignored builds the Serve API serves at /widget/, /embed.js, /site/.
+for app in widget demo-site; do
+  if [ -d "apps/$app" ] && [ ! -d "apps/$app/dist" ]; then
+    (cd "apps/$app" && npm ci --silent && npm run -s build) >"$LOGDIR/build-$app.log" 2>&1 \
+      && echo "OK   build $app" || echo "WARN build $app failed (see $LOGDIR/build-$app.log)"
+  fi
+done
+
 serve_cmd=(${SERVE_CMD:-make serve SERVE_HOST=0.0.0.0})
 step serve "http://127.0.0.1:$SERVE_PORT/healthz" 60 "${serve_cmd[@]}" || exit 1
 

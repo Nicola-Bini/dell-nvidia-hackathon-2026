@@ -43,7 +43,8 @@ then pass structured "schema-valid JSON with thinking off in ${dt}s"
 else fail structured "invalid or missing structured output"; fi
 
 # 3. Embedder on disk and vector length
-models=$(curl -s -m 10 "${BOX_OLLAMA_URL:-http://127.0.0.1:11434}/api/tags" | python3 -c 'import json,sys
+ollama="${BOX_OLLAMA_URL:-http://127.0.0.1:11434}"
+models=$(curl -s -m 10 "$ollama/api/tags" | python3 -c 'import json,sys
 print(" ".join(m["name"] for m in json.load(sys.stdin)["models"]))' 2>/dev/null)
 emb=$(echo "$models" | tr ' ' '\n' | grep -iE 'bge|embed|minilm|e5' | head -1)
 if [ -n "$emb" ]; then

@@ -18,6 +18,17 @@ ASK_TEMPLATE = ("{count} visitors asked about {topic}. I have nothing confirmed.
                 "What should I tell them?")
 
 
+def load_agent_env() -> None:
+    """Inside the sandbox the agent's shell has no CAC env; box/agent_install.sh writes
+    agent.env (git-ignored) next to this file. Real env vars win."""
+    f = Path(__file__).resolve().parent / "agent.env"
+    if f.exists():
+        for line in f.read_text().splitlines():
+            k, _, v = line.partition("=")
+            if k.strip() and not k.startswith("#"):
+                os.environ.setdefault(k.strip(), v.strip())
+
+
 class OwnerApi:
     def __init__(self, base: str | None = None, token: str | None = None):
         self.base = (base or os.environ.get("OWNER_BASE_URL", "http://127.0.0.1:8081")).rstrip("/")
@@ -125,6 +136,7 @@ def post_change(api: OwnerApi, a: argparse.Namespace) -> dict:
 
 def main(argv: list[str]) -> int:
     a = build_parser().parse_args(argv)
+    load_agent_env()
     api = OwnerApi()
     handlers = {
         "ask-top-gap": lambda: ask_top_gap(api),
