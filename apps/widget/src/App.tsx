@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import type { SurfaceContext } from "./components/types";
+import { Overlay, useOverlayToggle } from "./Overlay";
 import { SurfaceView } from "./SurfaceView";
 import type { Transport } from "./transport";
 import type { ActionResult, Bootstrap, Surface } from "./types";
@@ -99,13 +100,42 @@ function Chips({ chips, onAsk }: { chips: string[]; onAsk: (t: string) => void }
   );
 }
 
+/** Tracks the browser's online state, so a dropped connection reads as offline. */
+function useOnline() {
+  const [online, setOnline] = useState(() => navigator.onLine !== false);
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
+  return online;
+}
+
 function StatusLine({ status, retry }: { status: Status; retry: () => void }) {
-  if (status === "busy") return <p className="cac-status cac-busy">One moment…</p>;
+  const online = useOnline();
+  if (!online) {
+    return (
+      <p className="cac-status cac-error" role="status">
+        You seem to be offline. Answers will come back when you reconnect.
+      </p>
+    );
+  }
+  if (status === "busy") {
+    return (
+      <p className="cac-status cac-busy" role="status">
+        One moment…
+      </p>
+    );
+  }
   if (status !== "error") return null;
-  const offline = typeof navigator !== "undefined" && navigator.onLine === false;
   return (
     <p className="cac-status cac-error" role="alert">
-      {offline ? "You seem to be offline." : "Something went wrong. Please try again."}{" "}
+      Something went wrong. Please try again.{" "}
       <button type="button" onClick={retry}>
         Show the menu
       </button>
@@ -113,8 +143,9 @@ function StatusLine({ status, retry }: { status: Status; retry: () => void }) {
   );
 }
 
-export function App({ transport }: { transport: Transport }) {
+export function App({ transport, overlay = false }: { transport: Transport; overlay?: boolean }) {
   const { boot, surface, status, ctx } = useWidget(transport);
+  const showOverlay = useOverlayToggle(overlay);
   const openView = useCallback((p: string) => ctx.openView(p), [ctx]);
   useParentNav(openView);
   const chips = surface?.chips ?? boot?.chips ?? [];
@@ -142,6 +173,7 @@ export function App({ transport }: { transport: Transport }) {
         <Chips chips={chips} onAsk={ctx.ask} />
         <IntentBox onAsk={ctx.ask} disabled={status === "busy"} />
       </footer>
+      {showOverlay ? <Overlay transport={transport} /> : null}
     </div>
   );
 }

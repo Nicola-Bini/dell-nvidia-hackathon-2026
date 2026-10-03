@@ -33,7 +33,9 @@ export async function healthy(box: string, fetchImpl: typeof fetch, timeoutMs: n
 
 function makeIframe(doc: Document, box: string): HTMLIFrameElement {
   const iframe = doc.createElement("iframe");
-  iframe.src = `${box}/widget/`;
+  // ?cac_overlay=1 on the host page starts the widget with the metrics overlay shown.
+  const overlay = new URLSearchParams(doc.location?.search ?? "").get("cac_overlay") === "1";
+  iframe.src = `${box}/widget/${overlay ? "?overlay=1" : ""}`;
   iframe.title = "Ask us";
   iframe.setAttribute("sandbox", "allow-scripts allow-forms allow-same-origin");
   iframe.setAttribute("loading", "lazy");
@@ -69,6 +71,15 @@ function mountLauncher(doc: Document, iframe: HTMLIFrameElement) {
   doc.body.appendChild(panel);
   doc.body.appendChild(button);
   return () => show(true);
+}
+
+/** The backquote key on the host page toggles the widget's metrics overlay. */
+function forwardOverlayKey(doc: Document, iframe: HTMLIFrameElement, box: string) {
+  doc.addEventListener("keydown", (e) => {
+    const t = e.target as HTMLElement | null;
+    if (e.key !== "`" || (t && ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName))) return;
+    iframe.contentWindow?.postMessage({ type: "cac:overlay" }, box);
+  });
 }
 
 /** Post `cac:view` to the widget once it has loaded; queue until then. */
@@ -113,5 +124,6 @@ export async function install(opts: EmbedOptions): Promise<Embedded | null> {
     if (preset) send(preset);
   };
   interceptNav(doc, open);
+  forwardOverlayKey(doc, iframe, box);
   return { iframe, open };
 }

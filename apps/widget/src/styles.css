@@ -66,3 +66,17 @@ button, input, select, textarea { font: 15px var(--cac-ui); }
 .cac-gallery { display: grid; gap: 24px; padding: 16px; max-width: 720px; margin: 0 auto; }
 .cac-gallery-item { border: 1px solid var(--cac-line); border-radius: 8px; padding: 12px; }
 .cac-gallery-name { font: 12px var(--cac-ui); color: var(--cac-muted); margin: 0 0 8px; }
+
+.cac-panel { position: relative; }
+.cac-overlay {
+  position: absolute; top: 52px; right: 8px; z-index: 5; width: min(300px, calc(100% - 16px));
+  background: rgba(0, 0, 0, 0.88); border: 1px solid var(--cac-accent); border-radius: 8px;
+  padding: 10px 12px; font: 13px/1.35 var(--cac-ui); color: var(--cac-text);
+}
+.cac-overlay[data-stale] { border-color: var(--cac-error); }
+.cac-overlay h2 { margin: 0 0 6px; font: 600 12px var(--cac-ui); text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--cac-accent); }
+.cac-overlay dl { margin: 0; display: grid; gap: 3px; }
+.cac-overlay dl div { display: flex; justify-content: space-between; gap: 12px; }
+.cac-overlay dt { color: var(--cac-muted); }
+.cac-overlay dd { margin: 0; font-variant-numeric: tabular-nums; text-align: right; }
