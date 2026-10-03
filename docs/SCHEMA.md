@@ -4,8 +4,9 @@ Companion to [PRD.md](PRD.md). This file is the source of truth for scaffolding:
 processes, the graph store, the label and edge registries, the UI component catalog, and the
 wire contracts between the model, the Serve API, the widget, the agent, and external assistants.
 
-Version 2, 3 October 2026. Revised after an independent review that ran the DDL in a test
-database and checked the contracts against the PRD's acceptance criteria.
+Version 3, 3 October 2026. Version 2 followed an independent review that ran the DDL in a
+test database. Version 3 lets the agent evolve the graph itself: new node types, edge types
+and props, tags on existing data, edits, and new elements (sections 4, 7 and 8.6).
 
 ## 1. Design rules
 
@@ -20,11 +21,17 @@ database and checked the contracts against the PRD's acceptance criteria.
    The model writes no visitor-facing text.
 5. **No model-written queries.** Retrieval is vector entry plus fixed expansion templates.
 6. **Anonymous text never drives an agent that holds tools.** Visitors get one tool-less
-   constrained completion. The agent that can write to the graph sees only a short topic and
-   a count, and can only write the owner's own words.
-7. **Provenance on everything.** Every node and edge records its source and whether the owner
+   constrained completion. The agent sees clustered topics and counts, never raw visitor text.
+7. **The agent writes freely; publishing is gated.** The agent may change anything in the
+   private graph, including its structure: node types, edge types, props, tags, edits, and
+   elements. Every change is a recorded, reversible change record. What reaches the public
+   side depends on the change's approval tier (section 8.6), not on what the agent was
+   allowed to write.
+8. **The registries are data.** Labels, edge types and elements are rows, and props are JSON.
+   Changing the graph's structure never needs a database migration or a restart.
+9. **Provenance on everything.** Every node and edge records its source and whether the owner
    verified it.
-8. **One business per box in v0.** Every process reads `CAC_BUSINESS_ID`. Requests never carry
+10. **One business per box in v0.** Every process reads `CAC_BUSINESS_ID`. Requests never carry
    a business id. The `business_id` columns are for later; a second business needs its own
    database and roles.
 
@@ -54,6 +61,8 @@ Environment:
 | `LLM_BASE_URL`, `LLM_MODEL` | Local model endpoint. The Serve API refuses to start unless the host is loopback or the box's own address |
 | `EMBED_BASE_URL`, `EMBED_MODEL`, `EMBED_DIM` | Local embedder; same start-up check |
 | `OWNER_TOOLS_TOKEN` | Bearer token the agent sends to the Owner tools API |
+| `OWNER_INBOX_TOKEN` | A separate credential for the owner's inbox. Approve, reject and revert accept only this one, so the agent cannot approve its own changes |
+| `CAC_AUTONOMY` | `cautious`, `balanced` (default) or `free`: how much the agent may publish without an owner tap (section 8.6) |
 | `OWNER_CHANNEL_USER_ID` | The one identity allowed to speak as the owner on the owner channel |
 | `MODEL_MAX_INFLIGHT` | Cap on concurrent model calls from the Serve API |
 | `INTENT_MAX_CHARS` | 300 |
@@ -104,7 +113,19 @@ CREATE TABLE kg.label (
   label          text PRIMARY KEY,
   may_be_public  boolean NOT NULL,
   public_props   text[] NOT NULL DEFAULT '{}',
-  description    text NOT NULL
+  description    text NOT NULL,
+  locked         boolean NOT NULL DEFAULT false,  -- agent can never read or write these
+  status         text NOT NULL DEFAULT 'approved' CHECK (status IN ('draft', 'approved', 'retired')),
+  created_by     text NOT NULL DEFAULT 'seed' CHECK (created_by IN ('seed', 'agent', 'owner'))
+);
+
+-- Edge type registry: the agent can propose new relationship types
+CREATE TABLE kg.edge_type (
+  type           text PRIMARY KEY,
+  public_props   text[] NOT NULL DEFAULT '{}',
+  description    text NOT NULL,
+  status         text NOT NULL DEFAULT 'approved' CHECK (status IN ('draft', 'approved', 'retired')),
+  created_by     text NOT NULL DEFAULT 'seed' CHECK (created_by IN ('seed', 'agent', 'owner'))
 );
 
 -- 4.2 Full graph
@@ -136,7 +157,7 @@ CREATE TABLE kg.edge (
   business_id        text NOT NULL,
   src                text NOT NULL REFERENCES kg.node(id) ON DELETE CASCADE,
   dst                text NOT NULL REFERENCES kg.node(id) ON DELETE CASCADE,
-  type               text NOT NULL,               -- see edge registry
+  type               text NOT NULL REFERENCES kg.edge_type(type),
   props              jsonb NOT NULL DEFAULT '{}'::jsonb,
   status             text NOT NULL DEFAULT 'draft'
                      CHECK (status IN ('draft', 'approved', 'retired')),
@@ -149,6 +170,29 @@ CREATE TABLE kg.edge (
 );
 CREATE INDEX edge_src_idx ON kg.edge (src, type);
 CREATE INDEX edge_dst_idx ON kg.edge (dst, type);
+
+-- Every write by the agent (and by the owner through the inbox) is a change record.
+CREATE TABLE kg.change (
+  id           bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  ts           timestamptz NOT NULL DEFAULT now(),
+  business_id  text NOT NULL,
+  actor        text NOT NULL CHECK (actor IN ('agent', 'owner', 'ingest')),
+  action       text NOT NULL CHECK (action IN (
+                 'create_label', 'add_prop', 'create_edge_type',
+                 'create_node', 'update_node', 'retire_node',
+                 'create_edge', 'retire_edge',
+                 'create_component', 'update_component')),
+  target       text NOT NULL,                    -- label, edge type, node id or edge key
+  before       jsonb,                            -- prior state, for revert
+  after        jsonb NOT NULL,                   -- requested state
+  reason       text NOT NULL,                    -- why, in the agent's words (shown to the owner)
+  evidence     jsonb NOT NULL DEFAULT '{}'::jsonb, -- e.g. {"topic": "gift cards", "count": 12}
+  tier         text NOT NULL CHECK (tier IN ('auto', 'one_tap', 'locked')),
+  state        text NOT NULL CHECK (state IN ('pending', 'applied', 'rejected', 'reverted')),
+  decided_by   text,
+  decided_at   timestamptz
+);
+CREATE INDEX change_state_idx ON kg.change (business_id, state);
 
 -- 4.3 Published projection: the only graph the serving role can read
 CREATE TABLE kg_public.node (
@@ -250,17 +294,20 @@ BEGIN
   WHERE n.business_id = p_business
     AND n.visibility = 'public'
     AND n.status = 'approved'
-    AND l.may_be_public;
+    AND l.may_be_public
+    AND l.status = 'approved';
 
   INSERT INTO kg_public.edge (src, dst, type, props, verified_by_owner)
   SELECT e.src, e.dst, e.type,
          COALESCE((SELECT jsonb_object_agg(p.key, p.value)
                    FROM jsonb_each(e.props) AS p
-                   WHERE p.key IN ('position', 'weight')), '{}'::jsonb),
+                   WHERE p.key = ANY (t.public_props)), '{}'::jsonb),
          e.verified_by_owner
   FROM kg.edge e
+  JOIN kg.edge_type t ON t.type = e.type
   WHERE e.business_id = p_business
     AND e.status = 'approved'
+    AND t.status = 'approved'
     AND EXISTS (SELECT 1 FROM kg_public.node s WHERE s.id = e.src)
     AND EXISTS (SELECT 1 FROM kg_public.node d WHERE d.id = e.dst);
 
@@ -320,6 +367,12 @@ How the whiteboard's four graph sections map here:
 Seed `kg.label` with these rows. `public_props` is exactly the props listed; anything else on
 a node is dropped at publish. `search_text` is built only from `name` and these props.
 
+This table is the starting point, not a fixed list. The agent adds rows (`create_label`) and
+extends `public_props` (`add_prop`) through change records, for example a `GiftCard` label
+with `amounts` and `terms` after visitors keep asking about gift cards. Locked labels (Goal,
+KnowledgeGap, Customer, Proposal, OwnerNote) are the exception: the agent cannot read or
+write them, and cannot create a label with the same name.
+
 | Label | Prefix | Public | Props | Build |
 |---|---|---|---|---|
 | Business | `biz_` | yes | `cuisine`, `price_range`, `phone`, `url`, `tagline`, `timezone` | P0 |
@@ -342,8 +395,11 @@ a node is dropped at publish. `search_text` is built only from `name` and these 
 | Ingredient | `ing_` | yes | — | later |
 | MediaAsset | `img_` | yes | `url`, `alt` | later |
 | Promotion | `promo_` | yes | `details`, `days` | later |
-| Proposal | `prop_` | **no** | `kind`, `draft`, `reason` | P1 |
+| Proposal | `prop_` | **no** | — | not used; replaced by change records (`kg.change`) |
 | OwnerNote | `note_` | **no** | `text` | later |
+
+Seed the five non-public labels (Goal, KnowledgeGap, Customer, Proposal, OwnerNote) with
+`locked = true`.
 
 Site content that fits no typed label (about, story, policies) is stored as an FAQ with the
 page heading as `question`.
@@ -352,6 +408,10 @@ page heading as `question`.
 message.
 
 ## 6. Edge registry
+
+Seed `kg.edge_type` with these rows; `public_props` is the Props column. The agent adds new
+types (`create_edge_type`) through change records, for example `SEASONAL_IN` between a
+MenuItem and a new Season label.
 
 | Type | From → To | Props | Build | Notes |
 |---|---|---|---|---|
@@ -366,7 +426,7 @@ message.
 | `ADVANCES` | UIComponent → Goal | — | P0 | Never published; becomes `steer` |
 | `ABOUT` | KnowledgeGap → FAQ, SpecialHours | — | P0 | Links a gap to what answered it |
 | `RENDERS_WITH` | Intent → UIComponent | `weight` | P1 | |
-| `PAIRS_WITH` | MenuItem → MenuItem | — | later | |
+| `PAIRS_WITH` | MenuItem → MenuItem | — | P0 (agent may add) | Upsell suggestions |
 | `CONTAINS` | MenuItem → Ingredient | — | later | |
 | `DEPICTS` | MediaAsset → any public node | — | later | |
 
@@ -383,6 +443,7 @@ labels (never UIComponent), drop weak matches (threshold tuned on the fixture se
 | Service | FAQs that `ANSWERS` it |
 | HoursSpec, SpecialHours | all hours nodes |
 | FAQ | the node itself |
+| Any label with no row here (including agent-created ones) | the node and its one-hop neighbours over approved edges |
 
 If no embedding model is available on the box, the same `retrieve(text) → candidates` function
 is backed by Postgres full-text search plus `pg_trgm` over `search_text`, using the `synonyms`
@@ -424,15 +485,25 @@ Catalog entry (the props of a `UIComponent` node, id `ui_<component>`):
 | `CateringQuoteForm` | Catering, large groups, events | Service[catering] | code, prefilled from slots | `submit_catering_quote` | P0 |
 | `AllergenNotice` | Any diet or allergen involvement; or the visitor names an allergen | Allergen[0..1] | binder inserts it; model may pick it with an allergen id | — | P0 |
 | `GoalCTA` | Binder inserts it from `steer` | UIComponent | binder | `open_view:<preset>` | P0 |
+| `FactCard` | One node of any label that has no purpose-built component (including agent-created labels) | any public node[1] | model picks the id | — | P0 |
+| `ListCard` | Several nodes of one label that has no purpose-built component | any public label | model picks the label | — | P0 |
+| `FormCard` | A lead form defined by configuration (gift cards, private dining, a salon booking with a staff field) | Service[0..1] | model picks which form | `submit_form` | P0 |
 | `LocationCard` | Address, directions, parking, contact | Location | code | `directions`, `call` | P1 |
 | `ItemCard` | One specific dish | MenuItem[1] | model picks the id | `add_to_cart` | P1 |
 | `ReviewHighlights` | Reputation | ReviewSummary | code | — | P1 |
 | `Cart` | Reviewing and submitting the cart | client state | client | `submit_pickup_order` | P1 |
-| `FormCard` | A generic lead form configured by `fields` (gift cards, private dining, a salon booking with a staff field) | Service[1] | model picks it | `submit_form` | P1 |
 
-`FormCard` is how new elements get created without new code: the agent proposes an entry with
-`primitive: "FormCard"` and a `fields` list (`name`, `type`, `label`, `required`); the owner
-approves; after publish the model can select it.
+The three generic components are what let the graph evolve without new code:
+
+- **A new node type renders at once.** `FactCard` shows any node's public props as labelled
+  facts; `ListCard` shows a list of any label. When the agent creates a `GiftCard` label, the
+  model can select those nodes on the next publish.
+- **A new element is configuration.** The agent creates a `UIComponent` node with
+  `primitive: "FormCard"`, a `use_when` line, and a `fields` list (`name`, `type` of text,
+  number, date, select; `label`; `required`; `options`). After approval and publish the model
+  can select it, and submissions are stored as leads.
+- **A purpose-built React component is still a developer's job.** The generic ones are the
+  floor, not the ceiling.
 
 Actions never call the model:
 
@@ -442,7 +513,8 @@ Actions never call the model:
 | `open_view:<preset>` | client → `GET /v1/view/{preset}` | Shows a preset surface |
 | `submit_booking_request` | server | Inserts `ops.lead` (`booking_request`). A request, not a confirmed reservation. If the Service has `booking_url`, the form shows a link to the site's existing booking system instead |
 | `submit_catering_quote` | server | Inserts `ops.lead` (`catering_quote`) |
-| `submit_pickup_order`, `submit_form` | server | P1 |
+| `submit_form` | server | Inserts `ops.lead` (`form`) with the form's component id and the validated field values |
+| `submit_pickup_order` | server | P1 |
 | `directions`, `call` | client | P1 |
 
 Presets are fixed surfaces served with no model call:
@@ -533,6 +605,30 @@ and ids that were retrieved.
                 "properties": {
                   "component": { "enum": ["HoursCard", "BookingForm", "CateringQuoteForm"] }
                 }
+              },
+              {
+                "type": "object", "additionalProperties": false,
+                "required": ["component", "node"],
+                "properties": {
+                  "component": { "const": "FactCard" },
+                  "node": { "enum": ["gc_standard", "svc_private_events"] }
+                }
+              },
+              {
+                "type": "object", "additionalProperties": false,
+                "required": ["component", "label"],
+                "properties": {
+                  "component": { "const": "ListCard" },
+                  "label": { "enum": ["GiftCard"] }
+                }
+              },
+              {
+                "type": "object", "additionalProperties": false,
+                "required": ["component", "form"],
+                "properties": {
+                  "component": { "const": "FormCard" },
+                  "form": { "enum": ["ui_form_gift_card"] }
+                }
               }
             ]
           }
@@ -570,6 +666,10 @@ Schema-building rules:
 - `topic` is a short noun phrase for what could not be answered ("gluten-free pasta"). It is
   the only free text the model writes, and it goes only to the owner side.
 - There is no allergen filter on `MenuList`. Allergen questions route to `AllergenNotice`.
+- `FactCard.node` and `ListCard.label` are offered only for retrieved nodes whose label has no
+  purpose-built component. `FormCard.form` lists the approved `FormCard` entries. The catalog
+  and these enums are read from `kg_public` on every request, so a label or element the agent
+  added is selectable on the first request after publish.
 - Request settings: temperature 0, `max_tokens` 96, thinking disabled per request with
   `chat_template_kwargs: {"enable_thinking": false}`, compact JSON (on vLLM set
   `disable_any_whitespace` in the structured-output config). Confirm in the first 30 minutes
@@ -589,6 +689,7 @@ Examples:
 | do you cater for 40? | `{"kind":"answer","views":[{"component":"CateringQuoteForm"}]}` |
 | do you have gluten-free pasta? (nothing verified) | `{"kind":"gap","topic":"gluten-free pasta"}` |
 | I'm allergic to peanuts | `{"kind":"answer","views":[{"component":"AllergenNotice","allergen":"alg_peanuts"}]}` |
+| do you sell gift cards? (after the agent added the type and form) | `{"kind":"answer","views":[{"component":"ListCard","label":"GiftCard"},{"component":"FormCard","form":"ui_form_gift_card"}]}` |
 | tell me a joke | `{"kind":"off_topic"}` |
 
 ### 8.2 Slots (code, before the model)
@@ -614,7 +715,9 @@ means lowercase, trim, collapse whitespace, strip punctuation.
    comes from the Diet or Section node's name. Cap at 12 with a "Full menu" link to the
    `menu` preset. `order: true` adds the `add_to_cart` action.
 5. **Diet and allergen facts.** A diet badge is shown only for an owner-verified edge; an
-   unverified one renders "not verified, ask staff". An allergen never produces a list of safe
+   unverified one renders "not verified, ask staff". This is what makes it safe for the agent
+   to tag dishes itself: its tags appear at once, labelled unverified, until the owner taps
+   to confirm. An allergen never produces a list of safe
    dishes: `AllergenNotice` with an allergen shows the fixed text "We cannot guarantee any dish
    is free of {allergen}. Please tell your server about your allergy." and lists only dishes
    with an owner-verified `CONTAINS_ALLERGEN` edge under "Confirmed to contain {allergen}".
@@ -685,6 +788,9 @@ Data shapes per component:
 | `CateringQuoteForm` | `{ prefill: { headcount?, date? }, min_headcount }` |
 | `AllergenNotice` | `{ allergen, contains: [{ id, name }] }` |
 | `GoalCTA` | `{ label }` |
+| `FactCard` | `{ title, label, facts: [{ name, value }], verified }`; fact names are the prop keys in plain words |
+| `ListCard` | `{ title, items: [{ id, name, facts: [{ name, value }] }] }` |
+| `FormCard` | `{ form, title, fields: [{ name, type, label, required, options? }], submit_label }` |
 
 Form payloads (also the MCP tool inputs):
 
@@ -692,6 +798,7 @@ Form payloads (also the MCP tool inputs):
 |---|---|
 | `submit_booking_request` | `{ date, time, party_size (1..20), name, contact, notes? }` |
 | `submit_catering_quote` | `{ date, headcount, name, contact, notes? }` |
+| `submit_form` | `{ form, values: { <field name>: value } }`, validated against the form's `fields` |
 
 A failed submit returns HTTP 422 `{ "ok": false, "errors": [{ "field", "message" }] }`. A date
 in the past is an error.
@@ -738,31 +845,94 @@ Other rules:
 
 ### 8.6 Owner tools API
 
-REST on port 8081, `Authorization: Bearer $OWNER_TOOLS_TOKEN`, bound to the address the
-sandbox can reach and to nothing public. The agent calls it through one OpenClaw skill. If
-plain HTTP from the sandbox is blocked, the alternative is to expose the same endpoints as a
-Streamable HTTP MCP server registered with NemoClaw; settle this in the first 30 minutes.
+REST on port 8081, bound to the address the sandbox can reach and to nothing public. Two
+credentials: the agent sends `OWNER_TOOLS_TOKEN`; the owner's inbox uses `OWNER_INBOX_TOKEN`.
+The agent calls the API through one OpenClaw skill. If plain HTTP from the sandbox is blocked,
+expose the same endpoints as a Streamable HTTP MCP server registered with NemoClaw; settle
+this in the first 30 minutes.
 
-| Endpoint | Input | Effect | Agent may call |
+**What the agent can read**
+
+| Endpoint | Returns |
+|---|---|
+| `GET /owner/schema` | Labels with their props, edge types, and catalog entries, with status. Locked labels are listed by name only |
+| `GET /owner/graph/search?q=&label=` | Nodes and their edges from `kg`, drafts included. Never nodes of a locked label, lead payloads, or raw visitor text |
+| `GET /owner/topics` | What visitors are asking, clustered: `[{ topic, count, sessions, kind, component }]`. Topics are the short phrases from section 8.1 plus counts per chosen component. Folds new `ops.intent_log` rows in on each call, using the watermark in `ops.sync_state` |
+| `GET /owner/gaps?state=open` | `[{ gap_id, topic, count }]` for gaps seen in at least `GAP_ASK_MIN_SESSIONS` sessions |
+| `GET /owner/changes?state=` | Its own change records and their state |
+| `GET /owner/digest` | `{ questions_today, top_topics, open_gaps, pending_changes, new_leads: [{ kind, count }] }`: counts only |
+
+**What the agent can write: one endpoint, any change**
+
+`POST /owner/changes` with `{ action, target, after, reason, evidence }` returns
+`{ change_id, tier, state }`. The API assigns the tier; the agent cannot choose it.
+
+| Action | What it does | Example |
+|---|---|---|
+| `create_label` | Adds a node type to `kg.label` with its props and whether it may be public | `GiftCard` with `amounts`, `terms` |
+| `add_prop` | Adds a prop to a label's `public_props` | `spice_level` on MenuItem |
+| `create_edge_type` | Adds a relationship type to `kg.edge_type` | `SEASONAL_IN` |
+| `create_node`, `update_node`, `retire_node` | Adds, edits or retires a node of any unlocked label | Edit a dish description; add a `GiftCard` node |
+| `create_edge`, `retire_edge` | Tags or links existing data | `SUITABLE_FOR` from a dish to Vegan; `PAIRS_WITH` between two dishes |
+| `create_component`, `update_component` | Adds or edits a catalog entry built on `FormCard`, `FactCard` or `ListCard` | A gift-card request form |
+
+Every write the agent makes has `source_type = agent` and `verified_by_owner = false`; the API
+overrides anything else in the request. Applying a change writes the row, records `before` for
+revert, re-embeds the node, and (when the tier allows) publishes and pre-warms.
+
+**Approval tiers**
+
+| Tier | Meaning |
+|---|---|
+| `auto` | Applied and published immediately |
+| `one_tap` | Applied to the private graph as a draft; published when the owner taps approve in the inbox |
+| `locked` | Refused. Returned to the agent with the reason |
+
+`CAC_AUTONOMY` sets how much is automatic. `balanced` is the default and the demo setting.
+
+| Change | `cautious` | `balanced` | `free` |
 |---|---|---|---|
-| `GET /owner/gaps?state=open` | — | Folds new `ops.intent_log` rows with `kind = 'gap'` into KnowledgeGap nodes keyed on the lowercased topic (using the watermark in `ops.sync_state`), then returns `[{ gap_id, topic, count }]` for gaps seen in at least `GAP_ASK_MIN_SESSIONS` sessions. Never returns visitor text or session ids | yes |
-| `POST /owner/gaps/{id}/asked` | — | Marks the gap `asked`. Only one gap may be `asked` at a time, so an owner reply maps to exactly one question | yes |
-| `POST /owner/answers` | `{ gap_id, answer_text }` (at most 400 characters) | Accepted only for a gap in state `asked`. Creates an FAQ node (`question` = a templated question from the topic, `answer` = the owner's words verbatim) with `visibility = public`, `status = approved`, `source_type = owner`, `verified_by_owner = true`, `verified_at = now()`; builds `search_text`; embeds it; adds `ANSWERS` and `ABOUT` edges; marks the gap `answered` | yes |
-| `POST /owner/special-hours` | `{ date, closed, opens?, closes?, note? }` | Creates an owner-verified SpecialHours node, so "we're closed on the 24th" becomes data that code answers from | yes |
-| `POST /owner/publish` | — | Calls `kg.publish()`, then replays the top 20 intents and the demo intent list through `/v1/intent` with channel `prewarm`. Returns `{ graph_version }` | yes |
-| `GET /owner/digest` | — | `{ questions_today, top_topics, open_gaps, new_leads: [{ kind, count }] }`: counts only, no customer details | yes |
-| `GET /owner/inbox` | — | Read-only HTML page for the owner: new leads with details, open gaps with example questions. For a person, not the agent | no |
+| Anything that stays private (private labels, props, nodes, edges) | auto | auto | auto |
+| A tag that renders with its own "not verified" marker (`SUITABLE_FOR`, `CONTAINS_ALLERGEN`) | one tap | auto | auto |
+| Other links between existing public nodes (`PAIRS_WITH`, agent-created edge types) | one tap | auto | auto |
+| A new node of an existing public label (an FAQ, a `GiftCard`) | one tap | one tap | auto |
+| Editing an existing public fact (price, description, hours) | one tap | one tap | auto |
+| A new public label, a new public prop, a new edge type | one tap | one tap | auto |
+| A new or changed element (`create_component`) | one tap | one tap | auto |
+| Setting `verified_by_owner` on anything | locked | locked | locked |
+| Reading or writing a locked label (Goal, KnowledgeGap, Customer, Proposal, OwnerNote), leads, or raw visitor text | locked | locked | locked |
+| Changing a label's `may_be_public` from no to yes, or unlocking a label | locked | locked | locked |
 
-What the agent cannot do, by construction: read visitor text or lead details, create any node
-other than an FAQ or SpecialHours, verify a diet or allergen edge, approve a draft, or change
-visibility. The owner channel accepts messages only from `OWNER_CHANNEL_USER_ID`. The question
-sent to the owner is a code template around the topic: "{count} visitors asked about {topic}.
-I have nothing confirmed. What should I tell them?"
+In `free` mode the owner reviews after the fact: the digest lists what changed, and any change
+can be reverted from the inbox.
 
-P1 endpoints: `POST /owner/drafts` (always private, draft, `source_type = agent`),
-`POST /owner/proposals` (a `FormCard` entry for owner approval), batch verification of diet
-tags, and owner-initiated facts. Before any of these publishes, the API echoes the final text
-to the owner for a yes.
+**What only the owner can do** (inbox credential; the agent's token is refused)
+
+| Endpoint | Effect |
+|---|---|
+| `POST /owner/changes/{id}/approve` | Publishes a pending change |
+| `POST /owner/changes/{id}/reject` | Discards it; the agent sees the rejection and its reason |
+| `POST /owner/changes/{id}/revert` | Restores `before`, publishes, and marks the change `reverted` |
+| `POST /owner/verify` with `{ edge_ids }` or `{ node_ids }` | Sets `verified_by_owner` and `verified_at`. This is the only path to a verified badge |
+| `GET /owner/inbox` | The owner's page: pending changes with approve and reject buttons, each showing the agent's reason and evidence ("12 visitors asked about gift cards"); unverified tags with a confirm button; new leads with details; a history of applied changes with revert |
+
+**The owner's own words** (unchanged from version 2)
+
+| Endpoint | Effect |
+|---|---|
+| `POST /owner/gaps/{id}/asked` | Marks the gap `asked`. Only one gap is `asked` at a time, so a reply maps to one question |
+| `POST /owner/answers` with `{ gap_id, answer_text }` | Accepted only for a gap in state `asked`. Creates an owner-verified, approved, public FAQ in the owner's exact words, with `ANSWERS` and `ABOUT` edges; marks the gap `answered`. This is the one case where an agent call produces verified content, because the text is the owner's and the owner channel accepts messages only from `OWNER_CHANNEL_USER_ID` |
+| `POST /owner/special-hours` with `{ date, closed, opens?, closes?, note? }` | Creates an owner-verified SpecialHours node from an owner message |
+| `POST /owner/publish` | Calls `kg.publish()`, then replays the top 20 intents and the demo intent list through `/v1/intent` with channel `prewarm` |
+
+The question sent to the owner about a gap is a code template around the topic: "{count}
+visitors asked about {topic}. I have nothing confirmed. What should I tell them?"
+
+**Why this is safe to leave open.** The agent never sees raw visitor text, so the only
+injection path is a 60-character topic. Whatever it writes is unverified by construction.
+Locked data is unreachable with its token. It cannot approve its own changes. Everything it
+does is recorded and reversible. And the serving side still reads only what `publish()`
+copied.
 
 ### 8.7 MCP server
 
@@ -854,3 +1024,8 @@ The loader writes Goal nodes and `ADVANCES` edges as approved and owner-verified
 | Goal steer | Hours question returns a booking CTA; catering question returns the catering form and no booking CTA |
 | Private prop on a public node | A `supplier` prop on a MenuItem does not appear in `kg_public` |
 | Two-friends question through MCP | At least one owner-verified vegetarian main, one meat main, and a booking CTA |
+| Agent adds a node type | `create_label` GiftCard plus two `create_node` changes; after owner approval and publish, "do you sell gift cards?" returns a `ListCard` of GiftCard nodes with no restart |
+| Agent adds an element | `create_component` for a `FormCard`; after approval the model can select it and a submit stores a `form` lead |
+| Agent tags a dish | `create_edge` `SUITABLE_FOR` to Vegan is applied automatically in `balanced` mode and renders "not verified, ask staff"; after `POST /owner/verify` it shows the badge |
+| Agent edits a dish | `update_node` on a description is pending until approved; after revert the old text is back |
+| Agent tries the locked tier | Setting `verified_by_owner`, reading a Customer, or calling approve with the agent token each return a refusal |

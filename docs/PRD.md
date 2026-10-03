@@ -5,7 +5,7 @@
 | Working title | CAC: Chats, Agents, Context |
 | Event | Dell x NVIDIA AI Hackathon, Boston, Saturday 3 October 2026 |
 | Challenge | "Ship an always-on AI agent running fully local on the Dell Pro Max with GB10" |
-| Status | Version 2, 3 October 2026. Revised after four independent reviews (SQL run in a test database, fact check, build feasibility, fidelity to the team's discussion) |
+| Status | Version 3, 3 October 2026. Version 2 followed four independent reviews. Version 3 makes the self-evolving graph a core capability: the agent can add node types, edge types and props, tag and edit existing data, and add new elements |
 | Companion | [SCHEMA.md](SCHEMA.md): runtime, database, catalog, and wire contracts for scaffolding |
 | Research | [research/](research/README.md): the six fact-checked research reports behind this document |
 
@@ -25,9 +25,12 @@ a knowledge graph, then serves that knowledge two ways from one box:
 2. **To AI assistants acting for customers.** Claude or ChatGPT asks the restaurant's agent
    and gets the same governed answer, including an interactive element.
 
-Behind both, an always-on agent notices what customers ask that the business cannot answer,
-asks the owner, and publishes the owner's answer. Private data cannot cross to the public
-side, because the serving process has no database permission to read it.
+Behind both, an always-on agent evolves the graph from what customers ask. It answers gaps by
+asking the owner, and it changes the graph itself: it adds new node types, relationship
+types and properties, tags and edits existing data, and adds new interface elements. It writes
+freely to the private graph; what reaches the public side passes an approval tier the owner
+sets. Private data cannot cross to the public side, because the serving process has no
+database permission to read it.
 
 The name: WIMP (windows, icons, menus, pointers) made the business guess what visitors want.
 CAC (chats, agents, context) lets the visitor say it. It is also aimed at the other CAC,
@@ -42,9 +45,10 @@ catering lead. We have no conversion data yet.
 | The local LLM builds the UI | Google's paper reports 29–60% output errors for its older small models on one prompt set and generation times of a minute or more. Constrained decoding guarantees valid JSON, not a correct choice | The model chooses an element and ids from a list under a JSON-schema constraint. Code writes every word and number |
 | Every request goes through the NemoClaw agent | NVIDIA's tutorial quotes 30–90 s per agent response with the 120B model, and NemoClaw's gateway is built for one trusted operator, not anonymous visitors | Visitors get one constrained completion from the same local model. The NemoClaw agent does the always-on work. This is also a security decision: anonymous text never drives an agent that holds tools |
 | Three sub-agents: graph, visitor-facing, assistant-facing | An agent loop per request is too slow, and NemoClaw does not host public listeners | One NemoClaw agent for the graph and the owner. The visitor-facing and assistant-facing roles are plain services using the same local model. Splitting the agent in two (Gardener, Liaison) is P1 |
-| The LLM creates new elements; the owner approves | An element is a prebuilt React component, so a brand-new one needs code | P1: the agent proposes a new element as configuration over a generic form element (`FormCard`), which needs no code |
+| The LLM creates new elements; the owner approves | An element is a prebuilt React component, so a brand-new one needs code | Kept, in P0. Three generic components (`FormCard`, `FactCard`, `ListCard`) let the agent add elements and show new node types as configuration, with no new code |
+| A self-evolving graph agent | Structure can live in data: labels and edge types are rows, props are JSON | Kept, in P0. The agent changes structure and content through recorded, reversible change records; publishing is gated by an approval tier |
 | Elements are A2UI | Shipping an A2UI renderer in the widget and the MCP App is work with no demo payoff | Our own catalog JSON using A2UI's vocabulary (catalog, surface, action) |
-| The local LLM classifies dishes itself | A wrong diet or allergen tag is a safety problem | The model may draft a tag. A badge shows only after the owner confirms it |
+| The local LLM classifies dishes itself | A wrong diet or allergen tag is a safety problem | Kept. The agent tags dishes itself and the tag goes live marked "not verified, ask staff". The verified badge appears only after the owner taps confirm |
 | "Only desserts" refinement, cart checkout, microphone | Time | Refinement and cart checkout are P1. Voice is P2. The know-versus-order distinction stays in P0 |
 
 ## 2. Glossary
@@ -61,6 +65,9 @@ catering lead. We have no conversion data yet.
 | Publish | The step that copies approved public data to the store the serving side can read |
 | Steer | A per-component weight derived from the owner's private goals |
 | Gap | A question the graph could not answer |
+| Change record | One recorded, reversible write by the agent: a new node type, a tag, an edit, a new element |
+| Approval tier | Whether a change publishes automatically, waits for one owner tap, or is refused. Set by the owner's autonomy setting (cautious, balanced, free) |
+| Generic component | `FactCard`, `ListCard`, `FormCard`: components driven by configuration, so new node types and elements need no new code |
 | Canary | A fake private record with a unique name, used to prove nothing private leaks |
 | OpenClaw | The always-on agent framework the challenge requires |
 | OpenShell | The sandbox OpenClaw agents run in; it enforces a network allowlist |
@@ -124,11 +131,14 @@ governed source.
 5. **Private by structure.** The serving process cannot read private data. This is a database
    permission, not a prompt instruction.
 6. **Anonymous text never drives an agent that holds tools.** Visitors get a tool-less
-   completion. The agent that can write to the graph sees only a topic and a count, and can
-   only write the owner's own words.
-7. **Every answer leans toward an owner goal**, and never at the cost of answering the
+   completion. The agent sees clustered topics and counts, never raw visitor text.
+7. **The agent writes freely; publishing is gated.** The agent may change anything in the
+   private graph, including its structure. Every change is recorded and reversible. The
+   owner's autonomy setting decides what publishes on its own and what waits for a tap. Only
+   the owner can mark something verified.
+8. **Every answer leans toward an owner goal**, and never at the cost of answering the
    question.
-8. **Keep the existing site.** CAC is an added panel. If the box is unreachable, the site
+9. **Keep the existing site.** CAC is an added panel. If the box is unreachable, the site
    behaves exactly as before.
 
 ## 6. Users
@@ -150,9 +160,13 @@ governed source.
   `BookingForm`, `CateringQuoteForm`, plus `AllergenNotice` and `GoalCTA` inserted by code;
   presets for nav; forms that store leads; "Add" buttons with a cart count when the visitor
   wants to order; exact cache; cache pre-warm after each publish.
-- Flow 3: one NemoClaw agent that puts an unanswered question to the owner, records the
-  owner's reply, and publishes it.
-- Owner inbox: one read-only page listing new leads and open gaps.
+- Flow 3: one NemoClaw agent that evolves the graph. It puts unanswered questions to the
+  owner and publishes the reply, and it makes its own changes: new node types, edge types
+  and props; tags and edits on existing data; new elements.
+- Generic components `FactCard`, `ListCard` and `FormCard`, so what the agent adds can be
+  shown with no new code.
+- Change records with approval tiers, and an owner inbox page: pending changes with approve
+  and reject, unverified tags with confirm, applied changes with revert, new leads.
 - Privacy proof: permission-denied queries shown live, canary script, blocked egress.
 - Live overlay: latency, cache hits, model calls in flight, model host, leads captured.
 
@@ -162,8 +176,11 @@ governed source.
 - Ingesting the demo site's JSON-LD (instead of the seed) as the onboarding proof.
 - Refinement ("only desserts"). Cart review and pickup order as a lead. `LocationCard`,
   `ItemCard`, `ReviewHighlights`. History rail. Slot-masked and semantic cache.
-- Agent split into Gardener and Liaison. Agent-proposed `FormCard` elements. Owner verifying
-  diet tags in a batch. Owner-initiated facts. Onboarding interview.
+- Agent split into Gardener and Liaison. Owner-initiated facts. Onboarding interview. More
+  triggers for the agent (goal buttons nobody clicks, site re-crawl differences).
+
+The self-evolving loop is P0 and comes before Flow 2. With a 9 PM deadline, expect Flow 2 to
+be shown as a recording or left as roadmap.
 
 **P2: say as roadmap**
 
@@ -172,7 +189,7 @@ governed source.
 
 **Non-goals**
 
-- Payments. Rebuilding the owner's site. An owner dashboard beyond the read-only inbox.
+- Payments. Rebuilding the owner's site. An owner dashboard beyond the inbox page.
   Multi-tenant hosting in v0. Any cloud model call from the business side. Confirmed
   reservations (we create requests).
 
@@ -213,6 +230,7 @@ independent in P0.
 | Types "do you cater for 40?" | Catering quote form with 40 filled in. No booking button, because this surface already serves a goal | once |
 | Types "do you have gluten-free pasta?" (nothing confirmed) | "We haven't confirmed that yet. Please ask our staff." with the phone link. Logged as a gap | once |
 | Types "I'm allergic to peanuts" | A fixed caution and only the dishes confirmed to contain peanuts. Never a list of "safe" dishes | once |
+| Types "do you sell gift cards?" after the agent added that type and form | A list of gift card options and a request form, both from generic components | once |
 | Types something off topic | "I can help with our menu, hours, bookings and catering." | once |
 | Clicks nav "Menu", a chip's preset, "Book a table", "Add" | Preset surface or cart count | none |
 | Submits a form | Lead stored; confirmation shown | none |
@@ -254,33 +272,70 @@ web search both on and off, with "Always allow" already clicked.
 
 ### Flow 3: The always-on loop
 
-1. Visitors ask something the graph cannot answer. Each is logged with a short topic.
-2. On its heartbeat the agent asks the Owner tools API for open gaps. It gets a topic and a
-   count, never visitor text.
-3. The agent asks the owner on the owner channel: "5 visitors asked about gluten-free pasta.
-   I have nothing confirmed. What should I tell them?"
-4. The owner replies in plain words. The agent turns the reply into the right typed update: an
-   FAQ answer in the owner's exact words, or a special-hours entry ("we're closed on the
-   24th"). It publishes.
-5. Publishing pre-warms the cache. The next visitor gets the answer, marked "Confirmed by the
-   restaurant".
-6. The same heartbeat sends the owner a digest: questions today, top topics, new leads by
-   kind. Lead details stay in the owner inbox on the box.
+The agent wakes on a heartbeat, reads what visitors have been asking (clustered topics and
+counts, never raw text), reads the current graph and its structure, and decides what to
+change. It has two kinds of move.
+
+**Ask the owner** (when only the owner knows the answer)
+
+1. "5 visitors asked about gluten-free pasta. I have nothing confirmed. What should I tell
+   them?"
+2. The owner replies in plain words. The agent turns the reply into the right typed update:
+   an FAQ in the owner's exact words, or a special-hours entry ("we're closed on the 24th").
+3. It publishes. The next visitor gets the answer, marked "Confirmed by the restaurant".
+
+**Change the graph itself** (when the graph's content or shape is what is missing)
+
+| The agent notices | It does | What the visitor sees next |
+|---|---|---|
+| 12 people asked about gift cards; no node type holds that | Creates a `GiftCard` node type with `amounts` and `terms`, adds nodes, and adds a gift-card request form built on `FormCard` | A list of gift card options and a request form |
+| People ask "what's spicy?"; dishes have no such property | Adds a `spice_level` prop to MenuItem and fills it in from the descriptions | Spice level on dishes |
+| The risotto has no meat or fish in its description | Tags it `SUITABLE_FOR` Vegetarian | The dish appears under Vegetarian, marked "not verified, ask staff", until the owner taps confirm |
+| A dish description on the site changed | Edits the node | The new description, once approved |
+| Two dishes are often asked about together | Adds a `PAIRS_WITH` link, or creates a new relationship type if none fits | "Goes well with" suggestions |
+
+Every one of these is a change record with the agent's reason and its evidence. What happens
+next depends on the owner's autonomy setting:
+
+| Setting | Behaviour |
+|---|---|
+| Cautious | Everything public waits for one owner tap |
+| Balanced (default, used in the demo) | Tags and links that render with their own "not verified" marker publish at once. New node types, new public props, new elements, new facts, and edits to existing facts wait for one tap |
+| Free | Everything publishes at once. The owner reviews in the digest and can revert any change |
+
+In every setting, three things stay with the owner: marking anything verified, anything
+touching customers, leads or goals, and making a private type public.
+
+The owner's inbox page shows pending changes with approve and reject, unverified tags with
+confirm, applied changes with revert, and new leads. The agent cannot approve its own
+changes: approval uses a credential it does not have.
+
+The same heartbeat sends the owner a digest: questions today, top topics, changes made and
+pending, new leads by kind. Lead details stay in the inbox on the box.
 
 Heartbeat: OpenClaw's default is 30 minutes. Set it to 5 minutes, and for the demo send the
-agent a "check gaps now" message.
+agent a "check now" message.
 
-Acceptance: an unanswered question is answered correctly for the next visitor after one owner
-reply, with no code change and no restart. The owner is asked within one heartbeat of a gap
-crossing the ask threshold; the answer is live within one agent turn of the reply (measure
-that turn in the first 30 minutes and write the number here).
+Acceptance:
+
+- An unanswered question is answered correctly for the next visitor after one owner reply,
+  with no code change and no restart.
+- From a cluster of questions about something the graph has no type for, the agent creates a
+  node type, nodes, and a form element. After one owner tap, a visitor asking about it gets a
+  list and a form, with no code change and no restart.
+- The agent tags a dish; it appears marked "not verified"; after the owner confirms, it shows
+  the badge.
+- An edit the owner reverts is gone on the next request.
+- The agent's attempts to mark something verified, read a customer, or approve a change are
+  refused.
+- Measure one agent turn in the first 30 minutes and write the number here.
 
 ## 9. Functional requirements
 
 | ID | Requirement | Priority |
 |---|---|---|
 | G1 | Load seed data into typed nodes and edges with source and verification status | P0 |
-| G2 | Label registry marks which labels and which props may be published | P0 |
+| G2 | Label and edge-type registries mark what may be published. They are data: rows can be added at run time with no migration | P0 |
 | G3 | `publish()` copies approved public nodes with allowlisted props, bumps the graph version, clears stale cache | P0 |
 | G4 | Retrieval is vector entry plus fixed expansion; the model never writes a query | P0 |
 | G5 | Diet badges only for owner-verified edges; allergen questions never produce a safe list | P0 |
@@ -294,23 +349,24 @@ that turn in the first 30 minutes and write the number here).
 | S7 | Input limits, off-topic and gap surfaces, model timeout and in-flight cap with a preset fallback. No cloud client exists in the code | P0 |
 | S8 | Semantic cache; slot-masked cache; refinement | P1 |
 | W1 | One script tag adds the panel in a sandboxed iframe; a health check makes it a no-op if the box is down | P0 |
-| W2 | Five selectable components plus `AllergenNotice` and `GoalCTA` render from surface JSON | P0 |
+| W2 | Five purpose-built components, three generic ones (`FactCard`, `ListCard`, `FormCard`), plus `AllergenNotice` and `GoalCTA` render from surface JSON | P0 |
 | W3 | Suggested chips from the catalog's fixed lists, never from visitor logs | P0 |
 | W4 | Existing nav links open presets | P0 |
 | W5 | History rail; theme from brand traits | P1 |
-| A1 | One NemoClaw agent on a heartbeat: list gaps, ask the owner, record the reply as an FAQ or special hours, publish | P0 |
-| A2 | The agent's tools cannot read visitor text or lead details, verify diet or allergen edges, or approve drafts | P0 |
+| A1 | One NemoClaw agent on a heartbeat: read topics and the graph, ask the owner about gaps, record the reply as an FAQ or special hours, publish | P0 |
+| A2 | The agent can create node types, edge types and props; create, edit, tag and retire nodes and edges of any unlocked type; and create elements on the generic components. Each write is a change record with a reason and evidence | P0 |
+| A2a | Approval tiers by autonomy setting (cautious, balanced, free); owner-only approve, reject, revert and verify; the agent cannot read visitor text, lead details or locked types, and cannot mark anything verified | P0 |
+| A2b | New node types and elements are selectable on the first request after publish, with no restart | P0 |
 | A3 | The agent runs in the OpenShell sandbox with default-deny egress; the policy allows only the Owner tools API, the model endpoint, and the owner channel | P0 |
 | A4 | Heartbeat digest to the owner | P0 |
-| A5 | Agent proposes `FormCard` elements; owner approves | P1 |
-| A6 | Owner-initiated facts, batch diet verification, onboarding interview | P1 |
+| A5 | Owner-initiated facts, onboarding interview, more agent triggers | P1 |
 | X1 | MCP server: profile, ask, view, booking request, catering quote | P1 |
 | X2 | `ask_restaurant` returns the widget bundle as an MCP Apps element | P1 |
 | X3 | A2A agent card | P2 |
 | O1 | Metrics endpoint and overlay: latency, cache hits, in flight, model host, leads captured, goal buttons shown and clicked | P0 |
 | O2 | Permission-denied check and canary script against every public endpoint | P0 |
 | O3 | Load test at 1, 4, and 8 concurrent intents, once with an agent turn in flight | P0 |
-| O4 | Read-only owner inbox page: new leads, open gaps | P0 |
+| O4 | Owner inbox page: pending changes (approve, reject), unverified tags (confirm), applied changes (revert), new leads, open gaps | P0 |
 
 ## 10. Privacy and safety
 
@@ -326,9 +382,11 @@ that turn in the first 30 minutes and write the number here).
 4. Goals are private. The serving side sees a number per component, not the goal.
 5. Raw visitor text and leads go to tables the serving role can insert into but not read. The
    cache holds a hash of the question, not the question.
-6. The agent never sees raw visitor text or lead details, and no agent can verify a diet or
-   allergen edge, approve a draft, or change visibility. It can record only the owner's own
-   words, only from the owner's identity on the owner channel.
+6. The agent can change the private graph freely, including its structure, but everything it
+   writes is unverified by construction, recorded, and reversible. It never sees raw visitor
+   text, lead details, or locked types (goals, gaps, customers). It cannot mark anything
+   verified, approve its own changes, or make a private type public. The one exception is
+   the owner's own words relayed from the owner's identity on the owner channel.
 7. Card numbers, SSNs, and licence numbers are never stored anywhere in CAC.
 
 Of the four options on the whiteboard we use three together: a separate store (schema plus
@@ -340,10 +398,13 @@ say file permissions do not isolate them; NVIDIA also notes no sandbox fully sto
 injection. The sandbox limits where the agent can connect. The database role limits what the
 public side can read. The tool list limits what the agent can write. The demo shows all three.
 
-**Residual risk.** The gap topic is a short model-written phrase derived from visitor text and
-reaches the agent. It is capped at 60 characters and wrapped in a code template, and the
-agent's tools cannot do harm beyond recording an owner reply. The P1 hardening is to echo the
-final text to the owner for a yes before publishing.
+**Residual risk.** Giving the agent this much room makes it a larger target. The only path
+from a visitor to the agent is a topic phrase of at most 60 characters, so a crafted question
+could at worst lead the agent to propose a misleading node or tag. In balanced mode new facts
+and types wait for the owner's tap, and a tag shows as "not verified". In free mode a bad
+change can go live until the owner reverts it, which is why free is not the default. Nothing
+the agent does can expose private data, because the serving side reads only what publish
+copied from unlocked, public types.
 
 **What leaves the box.** Nothing from Flow 1 or Flow 3 when the owner channel is the local
 OpenClaw dashboard, so both run with the network unplugged. If the owner chooses a messaging
@@ -397,8 +458,10 @@ Processes, ports, and environment variables are in SCHEMA.md section 2.
 
 **Where NemoClaw is load-bearing.** The challenge is an always-on agent, and the series
 requires this stack. In CAC the agent is what makes the product learn: without it the graph is
-a static export. It does work a script cannot: it reads the owner's free-text reply and
-decides which typed update it is (an FAQ answer, a special-hours entry), then publishes.
+a static export. It does work a script cannot: it reads what visitors want and what the graph
+holds, decides whether the missing piece is a fact, a tag, a property, a new node type, a new
+relationship or a new element, and makes that change. It also reads the owner's free-text
+reply and decides which typed update it is.
 OpenShell is what lets us give that agent write tools safely: its policy allows three
 destinations and nothing else. Visitors do not go through the agent loop, by design (principle
 6) and for speed.
@@ -439,6 +502,8 @@ Full definitions are in [SCHEMA.md](SCHEMA.md). In short:
 - "Vegetarian" is a node, not a column. Items connect to it. Asking for vegetarian finds the
   node by vector search and follows its edges, which is the design from the whiteboard.
 - UI components are nodes too, connected to the goals they advance.
+- The structure is data: node types and edge types are rows, props are JSON. The agent adds
+  to them through change records, and the generic components show whatever it adds.
 
 ## 13. Competition
 
@@ -513,8 +578,9 @@ interface to visitors, as tools to assistants. It keeps learning from what custo
 it never leaves the owner's box.
 
 **Demo (assume three minutes; ask the organizers).** Before going on stage, seed five visitor
-questions about gluten-free pasta and let the agent ask the owner, so only one agent turn
-happens live.
+questions about gluten-free pasta and twelve about gift cards, and let the agent run: it asks
+the owner about the pasta and leaves the gift-card change pending in the inbox. Only one
+agent turn then happens live.
 
 | Time | Step |
 |---|---|
@@ -523,7 +589,8 @@ happens live.
 | 1:00 | "Do you have gluten-free pasta?" The agent does not know and says so. Show the owner channel: the agent already asked. The owner replies in one line |
 | 1:15 | While the agent records and publishes: the privacy proof. Permission denied as the serving role; the OpenShell policy and a blocked egress attempt; the canary result |
 | 1:50 | Ask again. Now it answers, "Confirmed by the restaurant". No code changed |
-| 2:05 | Claude: ask the two-friends question. The restaurant's own element renders in Claude. Request a table. The lead appears in the owner inbox. (Or its recording) |
+| 2:00 | The graph evolves. The inbox shows a pending change: "12 visitors asked about gift cards. I created a GiftCard type, two options, and a request form." The owner taps approve. Ask "do you sell gift cards?": a list and a form appear. No code changed, nothing restarted |
+| 2:25 | If built: Claude asks the two-friends question and the restaurant's own element renders in Claude. Otherwise its recording, or one sentence of roadmap |
 | 2:40 | Unplug the network. Flow 1 still answers. Overlay: model host is the box, leads captured, cache hits |
 
 **How the build maps to the rubric (as the team understands it)**
@@ -531,9 +598,9 @@ happens live.
 | Criterion | What we show |
 |---|---|
 | Local | All inference, graph, and agent on the box; the Serve API refuses to start unless the model host is local; OpenShell blocks other egress; Flow 1 and Flow 3 run unplugged with the local dashboard as owner channel |
-| Technical | Constrained selection with code-written facts; database-enforced partition with allowlisted publish; fixed retrieval; measured latency and concurrency |
-| Business value | Owner goals in every answer; leads captured and counted; the long tail platforms skip; the learning loop |
-| Pitch | The lead line, then WIMP to CAC and "aimed at your other CAC", then one live loop from unknown to answered |
+| Technical | An agent that changes the graph's structure at run time with no migration or restart; constrained selection with code-written facts; database-enforced partition with allowlisted publish; measured latency and concurrency |
+| Business value | The site grows new capabilities from customer demand (gift cards appeared because people asked); owner goals in every answer; leads captured and counted; the long tail platforms skip |
+| Pitch | The lead line, then WIMP to CAC and "aimed at your other CAC", then two live loops: unknown to answered, and unasked-for to built |
 
 **Claims to correct before pitching**
 
@@ -559,9 +626,9 @@ extra hour goes to Flow 2. A is the box and agent, B is the graph and pipeline, 
 | Clock | A: box and agent | B: graph and pipeline | C: surfaces |
 |---|---|---|---|
 | 2:00–3:00 | First-30-minute checks. One OpenClaw agent sends "hello" on the owner channel. Benchmark a standalone selection function on the 30 fixture intents at 1 and 4 concurrent | Postgres, DDL, roles. Load the seed, publish. Stub `/v1/intent` that serves the golden surface fixtures | Static demo site from the same seed. Widget shell against the stub. 15 minutes on a hello-world MCP connector through the tunnel: go or no-go for Flow 2 |
-| 3:00–5:00 | Owner tools API. Agent loop against a seeded fake gap: list gaps, ask owner, record answer, publish | Real pipeline: slots, retrieval, selection, validator, binder, exact cache, logging | Five components plus `AllergenNotice` and `GoalCTA` from fixtures. Presets. Forms to leads. Cart count |
-| **5:00 gate** | The loop runs on the box with a fake gap, else apply cut line 3 now | `/v1/intent` passes 27 of 30 fixtures | Widget renders every fixture |
-| 5:00–6:30 | Loop on real gaps. OpenShell policy file, blocked-egress script, recovery script. Digest | Verified-only rules, steer, canary and permission scripts, metrics, pre-warm on publish | Chips, overlay, owner inbox page, busy and error states |
+| 3:00–5:00 | Owner tools API: read endpoints, `POST /owner/changes` with tiers, owner-only approve and revert. Agent loop against a seeded fake gap and a seeded gift-card topic | Real pipeline: slots, retrieval, selection, validator, binder, exact cache, logging | Five components, the three generic ones, plus `AllergenNotice` and `GoalCTA` from fixtures. Presets. Forms to leads. Cart count |
+| **5:00 gate** | Both loops run on the box against seeded topics (gap answered; gift-card type created and pending), else apply cut line 3 now | `/v1/intent` passes 27 of 30 fixtures | Widget renders every fixture |
+| 5:00–6:30 | Loops on real topics. Tagging and edits. OpenShell policy file, blocked-egress script, recovery script. Digest | Verified-only rules, steer, canary and permission scripts, metrics, pre-warm on publish | Owner inbox page with approve, reject, confirm and revert. Chips, overlay, busy and error states |
 | **6:30 gate** | Flow 1 and Flow 3 pass acceptance. Only then start Flow 2 | | |
 | 6:30–7:30 | Load test at 1, 4, 8, once with an agent turn in flight | Data quality. JSON-LD ingest if time | Flow 2: text-only `ask_restaurant`, then the MCP App. If the gate failed, help close P0 |
 | 7:30–8:00 | Record every flow as backup | | |
@@ -589,8 +656,9 @@ extra hour goes to Flow 2. A is the box and agent, B is the graph and pipeline, 
    text-only `ask_restaurant` and show the element in the local MCP Apps test host.
 2. Tunnel blocked by the venue network: phone hotspot; failing that, demo Flow 2 from the
    local test host and say why.
-3. Agent loop not running by 5:00: reduce the agent to one job (ask the owner about the top
-   gap, record the reply) and move publishing to a button on the owner inbox.
+3. Agent loop not running by 5:00: keep the Owner tools API and inbox as built, and reduce
+   the agent to two jobs: ask the owner about the top gap, and propose one structural change
+   (the gift-card type and form). Drop tagging and edits from the live demo.
 4. Sandboxed agent cannot reach the Owner tools API over plain HTTP: register the same
    endpoints as a Streamable HTTP MCP server with NemoClaw, which is the tool path it
    documents.
@@ -607,6 +675,8 @@ extra hour goes to Flow 2. A is the box and agent, B is the graph and pipeline, 
 | NemoClaw setup eats hours (alpha; 30–60 min first install; no auto-restart) | High | One person owns it from the first minute; scripted recovery; one agent, one job |
 | Judges read the direct model path as bypassing the required stack | Medium | Ask a mentor early; present it as a security decision; Plan B in section 11 |
 | A cloud assistant in the demo read as "not fully local" | Medium | Frame it as the customer's assistant; end the demo unplugged; have the recording |
+| The agent makes a poor structural change (a junk type, a wrong tag) | Medium | Balanced autonomy: structure waits for one tap; tags show as unverified; every change has a reason and a revert |
+| The self-evolving loop takes the time Flow 2 needed | High | Accepted: the loop is P0, Flow 2 is behind the 6:30 gate and has a recording fallback |
 | Model picks the wrong component | Medium | Tiny catalog, `use_when` lines, 30-intent fixture with a pass mark, busy fallback |
 | Agent turn too slow for a live demo | Medium | Measure in the first 30 minutes; pre-ask the owner before going on stage |
 | Publish empties the cache mid-demo | Certain | Pre-warm on publish (P0) |
@@ -631,13 +701,16 @@ extra hour goes to Flow 2. A is the box and agent, B is the graph and pipeline, 
 
 1. The demo restaurant is fictional, to avoid real allergen claims about a real business.
 2. The owner channel is the local OpenClaw dashboard; a messaging app is optional.
+3. The agent's autonomy setting is balanced: tags and links publish at once marked
+   unverified; new types, props, elements, facts and edits wait for one owner tap. Switch to
+   free if you want everything to publish without a tap.
+4. The self-evolving loop is P0 and takes priority over the Claude flow.
 
 ## 19. Ideas to build on
 
 | Idea | Helps with | Effort today | What to build |
 |---|---|---|---|
 | Demand report | Business value | 1 h | Digest from top topics, open gaps, and leads per element: "37 asked about gluten-free, 0 tagged dishes; 5 booking requests this week" |
-| Agent-proposed element | Technical, pitch | 2 h | A `FormCard` proposal from a cluster of gaps (gift cards, private dining); the owner replies yes; the element appears |
 | Onboarding interview | Business value | 1 h | Completeness check after ingest; one batched message of what is missing |
 | Slot-masked cache | Local, technical | 30 min | "Open on <any date>" costs one model call ever |
 | Confirmed-by-owner mark | Pitch | 30 min | "Confirmed by the restaurant, 3 Oct" on answers and in the text assistants read. Hypothesis: assistants may come to prefer sources that state provenance |
