@@ -1,0 +1,110 @@
+{
+  "surface_id": "s_gift_cards",
+  "kind": "answer",
+  "title": "Gift cards",
+  "say": "",
+  "views": [
+    {
+      "id": "v1",
+      "component": "ListCard",
+      "data": {
+        "title": "Gift cards",
+        "items": [
+          {
+            "id": "gc_25",
+            "name": "$25 gift card",
+            "facts": [
+              {
+                "name": "Amounts",
+                "value": "$25"
+              },
+              {
+                "name": "Terms",
+                "value": "Valid for 12 months. Redeemable in the bar."
+              }
+            ]
+          },
+          {
+            "id": "gc_50",
+            "name": "$50 gift card",
+            "facts": [
+              {
+                "name": "Amounts",
+                "value": "$50"
+              },
+              {
+                "name": "Terms",
+                "value": "Valid for 12 months. Redeemable in the bar."
+              }
+            ]
+          }
+        ]
+      },
+      "actions": [],
+      "text": "Gift cards: $25 gift card; $50 gift card. Terms: Valid for 12 months. Redeemable in the bar."
+    },
+    {
+      "id": "v2",
+      "component": "FormCard",
+      "data": {
+        "form": "ui_form_gift_card",
+        "title": "Request a gift card",
+        "fields": [
+          {
+            "name": "name",
+            "type": "text",
+            "label": "Your name",
+            "required": true
+          },
+          {
+            "name": "contact",
+            "type": "text",
+            "label": "Email or phone",
+            "required": true
+          },
+          {
+            "name": "amount",
+            "type": "select",
+            "label": "Amount",
+            "required": true,
+            "options": [
+              "$25",
+              "$50"
+            ]
+          }
+        ],
+        "submit_label": "Send request"
+      },
+      "actions": [
+        {
+          "name": "submit_form",
+          "handler": "server"
+        }
+      ],
+      "text": "Request a gift card: give your name, a contact, and an amount ($25 or $50)."
+    },
+    {
+      "id": "v3",
+      "component": "GoalCTA",
+      "data": {
+        "label": "Book a table"
+      },
+      "actions": [
+        {
+          "name": "open_view:booking",
+          "handler": "client"
+        }
+      ],
+      "text": ""
+    }
+  ],
+  "chips": [
+    "See the menu"
+  ],
+  "meta": {
+    "cache": "miss",
+    "latency_ms": 1840,
+    "graph_version": 8,
+    "model": "local"
+  }
+}

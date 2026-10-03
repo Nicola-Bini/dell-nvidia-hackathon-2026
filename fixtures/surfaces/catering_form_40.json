@@ -1,0 +1,35 @@
+{
+  "surface_id": "s_catering_form_40",
+  "kind": "answer",
+  "title": "Catering",
+  "say": "Tell us the date and headcount.",
+  "views": [
+    {
+      "id": "v1",
+      "component": "CateringQuoteForm",
+      "data": {
+        "prefill": {
+          "headcount": 40
+        },
+        "min_headcount": null
+      },
+      "actions": [
+        {
+          "name": "submit_catering_quote",
+          "handler": "server"
+        }
+      ],
+      "text": "The Kenmore catering: Let us cater your next event! Request a catering quote for 40 guests."
+    }
+  ],
+  "chips": [
+    "See the menu",
+    "Can I host a private event?"
+  ],
+  "meta": {
+    "cache": "miss",
+    "latency_ms": 1840,
+    "graph_version": 7,
+    "model": "local"
+  }
+}

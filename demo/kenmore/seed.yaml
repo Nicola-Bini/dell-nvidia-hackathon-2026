@@ -1,0 +1,430 @@
+# The Kenmore — demo seed, site facts only.
+# Shape follows docs/SCHEMA.md section 9. Everything in this file was read from
+# https://www.thekenmorebar.com/ on 2026-10-03; nothing here is invented.
+# Demo-only assumptions (reservations, special hours, goals, canary, catalog) live in
+# demo-overlay.yaml so they cannot be mistaken for facts about the real bar.
+# Text is verbatim from the site, typos included, unless a comment says "rewrite".
+
+business:
+  id: biz_demo                      # CAC_BUSINESS_ID
+  name: The Kenmore
+  timezone: America/New_York
+  cuisine: [American Pub]           # JSON-LD servesCuisine
+  price_range: "$$"                 # JSON-LD priceRange
+  phone: "+1 617 266 6662"
+  url: https://www.thekenmorebar.com
+  tagline: "We are a local's establishment focusing on craft beer and craft ingredients for our menu."
+  # logo_url is not in Business.public_props; publish drops it until the prop is added
+  logo_url: "https://images.getbento.com/accounts/fe7cc3df421f1868b3dd6e13123a93eb/media/images/62586logo-white.png"
+  source_url: https://www.thekenmorebar.com/
+
+location:
+  id: loc_kenmore
+  name: The Kenmore
+  street: 476 Commonwealth Avenue
+  city: Boston
+  region: MA
+  postal: "02215"
+  maps_url: https://maps.google.com/?cid=8633651278846652535
+  # parking, transit: not on the site (see README, open gaps)
+  source_url: https://www.thekenmorebar.com/location/the-kenmore/
+
+# A `closes` earlier than `opens` means the next calendar day (the bar closes after midnight).
+hours:
+  - { id: hrs_sun, days: [sun], opens: "10:00", closes: "01:00" }
+  - { id: hrs_mon_wed, days: [mon, tue, wed], opens: "11:00", closes: "01:00" }
+  - { id: hrs_thu_sat, days: [thu, fri, sat], opens: "11:00", closes: "02:00" }
+
+special_hours: []                   # none on the site; demo fixtures are in demo-overlay.yaml
+
+services:
+  - id: svc_takeout
+    kind: takeout
+    name: Takeout and delivery
+    details: "Takeout or delivery, ordered online through Toast."   # rewrite of the home banner
+    booking_url: https://www.toasttab.com/the-kenmore
+    source_url: https://www.thekenmorebar.com/
+  - id: svc_catering
+    kind: catering
+    name: Catering
+    details: "Let us cater your next event!"
+    # min_headcount: not on the site
+    source_url: https://www.thekenmorebar.com/catering/
+  - id: svc_private_events
+    kind: private_events
+    name: Private events
+    details: "You can inquire about hosting a private event at any of our sister locations listed below. Corner Tavern, The Westland, Harry's Bar & Grill, The Avenue, White Horse Tavern, The Hopewell, The Last Drop."
+    source_url: https://www.thekenmorebar.com/private-events/
+
+diets:
+  - { id: diet_vegetarian, name: Vegetarian, schema_org: VegetarianDiet,
+      synonyms: [veggie, meatless, "no meat", "plant based"] }
+  - { id: diet_vegan, name: Vegan, schema_org: VeganDiet, synonyms: ["plant based", "no animal products"] }
+  - { id: diet_gluten_free, name: Gluten-free, schema_org: GlutenFreeDiet,
+      synonyms: [gf, "gluten free", "no gluten", celiac, coeliac] }
+
+# The nine FDA major allergens. The site states no allergen content for any item, so there are
+# no CONTAINS_ALLERGEN edges; AllergenNotice shows the fixed notice only.
+allergens:
+  - { id: alg_milk, name: Milk, fda_major: true, synonyms: [dairy, lactose, cheese] }
+  - { id: alg_eggs, name: Eggs, fda_major: true, synonyms: [egg] }
+  - { id: alg_fish, name: Fish, fda_major: true, synonyms: [] }
+  - { id: alg_shellfish, name: Shellfish, fda_major: true, synonyms: [crustacean, shrimp, crab, lobster] }
+  - { id: alg_tree_nuts, name: Tree nuts, fda_major: true, synonyms: [nuts, almond, walnut, pecan, cashew] }
+  - { id: alg_peanuts, name: Peanuts, fda_major: true, synonyms: [peanut, "nut allergy"] }
+  - { id: alg_wheat, name: Wheat, fda_major: true, synonyms: [gluten, flour] }
+  - { id: alg_soy, name: Soy, fda_major: true, synonyms: [soya, soybean] }
+  - { id: alg_sesame, name: Sesame, fda_major: true, synonyms: [] }
+
+# SUITABLE_FOR edges the site itself supports, approved but not owner-verified, so they render
+# "not verified, ask staff". Which of them the demo treats as verified is set in the overlay.
+unverified_diets:
+  diet_vegetarian:
+    - mi_the_beyond_meat_burger_vegetarian   # item name says "(Vegetarian)"
+    - mi_the_veg_dog                         # Beyond Meat sausage; implied by the name only
+  diet_gluten_free:
+    - mi_xul_tiny_umbrella                   # description: "Gluten free sour"
+    - mi_happy_dad_grape                     # description: "gluten-free seltzer"
+    - mi_happy_dad_fruit_punch               # description: "gluten-free seltzer"
+
+# Site content with no typed label, stored as FAQs (schema section 5). Questions are canonical
+# rewrites. Answers are verbatim site text unless marked "rewrite".
+faqs:
+  - id: faq_about
+    question: What is The Kenmore?
+    answer: "The Kenmore is a pub in the heart of Kenmore Square specializing in craft beer, burgers, and hot dogs. We are located just steps from Fenway Park and just outside the Back Bay. We offer signature Pat LaFrieda Blend Hamburgers and locally sourced, 100% all beef Kayem Hot Dogs from our scratch kitchen."
+    answers: [biz_demo]
+    source_url: https://www.thekenmorebar.com/about/
+  - id: faq_beer_selection
+    question: What kind of beer and wine do you have?
+    answer: "Our 16 draft lines and large can & bottle selection feature some of the best craft beer options from New England and around the world, with rotating options providing new beers weekly. We also offer a selection of fine wines for guests who are less interested in life on the hoppy side."
+    answers: [biz_demo]
+    source_url: https://www.thekenmorebar.com/about/
+  - id: faq_meals_served
+    question: When do you serve lunch, dinner, and late-night food?
+    answer: "Join us for lunch, dinner, or late-night bites 7 days a week, as well as brunch on Saturday and Sunday. We are a great place to pregame before the Red Sox or a concert at the park or any of the local event venues."
+    answers: [biz_demo]
+    source_url: https://www.thekenmorebar.com/about/
+  - id: faq_kitchen_hours
+    question: When does the kitchen close?
+    answer: "Kitchen closes at 11:30pm Sunday-Thursday and 12:30am Friday and Saturday."
+    answers: [biz_demo]
+    source_url: https://www.thekenmorebar.com/location/the-kenmore/
+  - id: faq_brunch
+    question: Do you serve brunch?
+    answer: "Brunch available Saturday and Sunday until 2 PM."
+    answers: [biz_demo]
+    source_url: https://www.thekenmorebar.com/location/the-kenmore/
+  - id: faq_takeout_delivery
+    question: Do you offer takeout or delivery?
+    answer: "Yes. Order takeout or delivery online at https://www.toasttab.com/the-kenmore."   # rewrite
+    answers: [svc_takeout]
+    source_url: https://www.thekenmorebar.com/
+  - id: faq_catering
+    question: Do you cater events?
+    answer: "Let us cater your next event!"
+    answers: [svc_catering]
+    source_url: https://www.thekenmorebar.com/catering/
+  - id: faq_private_events
+    question: Can I host a private event?
+    answer: "You can inquire about hosting a private event at any of our sister locations: Corner Tavern, The Westland, Harry's Bar & Grill, The Avenue, White Horse Tavern, The Hopewell, The Last Drop."
+    answers: [svc_private_events]
+    source_url: https://www.thekenmorebar.com/private-events/
+  - id: faq_burger_adds_sides
+    question: What can I add to a burger, and what sides are there?
+    answer: "Adds: Extra Patty: $3.95, Cheese: $1.50, Bacon: $1.50, Avocado: $1.50. Sides: Fries, \"K\" Fries, Brussels, Coleslaw, Chopped Salad."
+    answers: [biz_demo]
+    source_url: https://www.thekenmorebar.com/menus/
+  - id: faq_cooked_to_order
+    question: Which items may be served raw or undercooked?
+    answer: "*These items are cooked to order and may be served raw or undercooked. Consuming raw or undercooked meats, poultry, shellfish, or eggs may increase your risk of food-borne illness. Please inform your server of any allergies before ordering. Marked items: The \"K\" Burger, Double Patty Americana, The Smokehouse Burger, Shroom Lover Burger, The Breakfast Burger."   # advisory verbatim ("Pleas" corrected); item list derived from the asterisks
+    answers: [biz_demo]
+    source_url: https://www.thekenmorebar.com/menus/
+  - id: faq_owner
+    question: Who runs The Kenmore?
+    answer: "The Kenmore is the latest hot spot from Red Paint Hospitality. Located in the heart of historic Kenmore Square. Just outside of Fenway and Back bay, Boston."
+    answers: [biz_demo]
+    source_url: https://www.thekenmorebar.com/
+  - id: faq_contact
+    question: How do I contact The Kenmore?
+    answer: "Send us a message and we'll get back to you as soon as possible. You can also reach us by phone at (617) 266-6662."
+    answers: [biz_demo]
+    source_url: https://www.thekenmorebar.com/contact/
+  - id: faq_jobs
+    question: Are you hiring?
+    answer: "We'd love to have you join our team! Apply at https://www.thekenmorebar.com/jobs/. Feel free to send in your resume even if you don't see the position you're looking for listed."   # lightly rewritten: the site says "use the form below"
+    answers: [biz_demo]
+    source_url: https://www.thekenmorebar.com/jobs/
+  - id: faq_social
+    question: Are you on social media?
+    answer: "Facebook: https://www.facebook.com/thekenmoreBOS/ and Instagram: https://www.instagram.com/thekenmoreboston/."   # rewrite of the footer links
+    answers: [biz_demo]
+    source_url: https://www.thekenmorebar.com/
+  - id: faq_press
+    question: Has The Kenmore been in the press?
+    answer: "The Heights, Eater Boston, Boston Magazine and Boston Business Journal have written about The Kenmore. Links are at https://www.thekenmorebar.com/press/."   # rewrite
+    answers: [biz_demo]
+    source_url: https://www.thekenmorebar.com/press/
+
+# BrandTrait nodes (P1), read from the site's computed styles.
+brand:
+  - { id: trait_color_background, kind: color, value: "#111111" }
+  - { id: trait_color_text, kind: color, value: "#FFFFFF" }
+  - { id: trait_font_heading, kind: font, value: Engravers }
+  - { id: trait_font_body, kind: font, value: Cormorant Garamond }
+
+# Menu, generated from https://www.thekenmorebar.com/menus/. An item listed in two sections on
+# the site is defined once and referenced with `ref` (one MenuItem node, two HAS_ITEM edges).
+# The Desserts and Specials tabs exist on the site but are empty, so they are not seeded.
+# `cooked_to_order` marks the site's asterisk; it is not in MenuItem.public_props, so publish
+# drops it until someone adds the prop (see README).
+sections:
+  - id: sec_draft_beer
+    name: "Draft Beer"
+    items:
+      - { id: mi_bentwater_sluice_juice, name: "Bentwater Sluice Juice", price_cents: 850,
+          description: "With aromatics of orange, tangerine, and lime peel, this IPA is juicy, hazy, smooth and a Boston favorite. Hazy IPA. 6.2%. 16oz" }
+      - { id: mi_xul_tiny_umbrella, name: "Xul Tiny Umbrella", price_cents: 1050,
+          description: "Gluten free sour with mango, guava and pineapple. Topical Vibes all day!!" }
+      - { id: mi_aeronaut_robot_crush, name: "Aeronaut Robot Crush", price_cents: 800,
+          description: "KAPOW! This adventure fuel for humans features flavors of biscuit and honey balanced with hints of citrus. A bounty of sweet pilsner malt collides with the perfect dose of Citra hops to create a crisp, quaffable and award-winning lager, ROBOT CRUSH! 5.1% 16oz" }
+      - { id: mi_exhibit_a_everyday_lager, name: "Exhibit A Everyday Lager", price_cents: 850,
+          description: "Classic American Lager features a traditional Pilsner malt character with a touch of Noble Hops. 4.9% 16oz" }
+      - { id: mi_maine_lunch, name: "Maine Lunch", price_cents: 1200,
+          description: "Lunch is a special whale that has been spotted off the Maine coast since 1982. She has what looks like a bite taken out of her fin, which adds to her unique character. With aromas of caramel, orange, papaya, grapefruit, and underlying floral notes, with hints of onion and garlic. 7% 12oz" }
+      - { id: mi_bissel_brothers_substance, name: "Bissel brothers substance", price_cents: 1000,
+          description: "Our precious flagship. Brightly dank and designed to be just mysterious enough.. Hopped with Falconer’s Flight, Centennial, Apollo, Chinook, and Simcoe. 6.6%" }
+      - { id: mi_3_floyds_zombie_dust, name: "3 Floyds Zombie Dust", price_cents: 950,
+          description: "Intensely hopped and gushing undead Pale Ale 6.5% 16oz" }
+      - { id: mi_allagash_white, name: "Allagash White", price_cents: 775,
+          description: "Our interpretation of a traditional Belgian wheat beer. Brewed with a generous portion of wheat and spiced with coriander and Curacao orange peel, this beer is fruity, refreshing and slightly cloudy in appearance." }
+      - { id: mi_coors_light, name: "Coors Light", price_cents: 600,
+          description: "Draft" }
+      - { id: mi_fat_tire, name: "Fat Tire", price_cents: 800,
+          description: "Fat Tire's unique flavor profile originates from 1930s Belgium. During this era, small breweries began offering easy-drinking beer crafted with signature Belgian yeast in order to satisfy the tastes of visiting British soldiers. Today, Fat Tire blends a subtle malt presence with a slightly fruity hop profile and crisp finish, to create a bright and balanced beer that drinks easy, anywhere. 5.2%" }
+      - { id: mi_stella, name: "Stella", price_cents: 800,
+          description: "This premium imported beer is brewed in Belgium and made with light barley malt, and Tomahawk and Saaz hops. The brewing process lends to a wonderful floral aroma, well-balanced malt sweetness, crisp hop bitterness and a soft dry finish 5% 16oz" }
+      - { id: mi_guinness, name: "Guinness", price_cents: 900,
+          description: "Rich and creamy. Distinctively black. Velvety in its finish. This iconic beer is defined by harmony. Sip after sip, sweet counters bitter as the malt arrives on cue to compliment a base of roasted barley. Just as the unmistakable white head sits flush atop the dark beer, so do the flavors counter and combine perfectly. ABV 4.2%" }
+      - { id: mi_lawsons_easy_sip, name: "Lawsons Easy Sip", price_cents: 800,
+          description: "2026 Limited Release: June Easy Sip is a mellow India Pale Ale that floats across the palate with citrusy and floral hop notes and a clean, bright malt character. Made for mindful sipping and deep inhales, it’s easy the whole way through, inviting you to slow down and enjoy the moment. 4.5%" }
+      - { id: mi_widowmaker_green_wizard, name: "Widowmaker Green Wizard", price_cents: 1100,
+          description: "Green Wizard is a West Coast IPA brewed with Four Star Farms' Centennial and Cascade hops. We wanted to brew something a little different so we created this super balanced, extremely drinkable ripper with some of the freshest hops grown locally. Coming in at 6.66% abv in celebration of our 666th batch and pouring clear and bright with a beautiful copper color, this beer smells like you are walking through a dense northern forest, and tastes like honeycomb, grapefruit pith and the stickiest of the icky" }
+  - id: sec_ipas
+    name: "IPAs"
+    items:
+      - { id: mi_lawsons_sip_of_sunshine, name: "Lawson's Sip of Sunshine", price_cents: 1250,
+          description: "Packed with juicy tropical fruit character, bright floral aromas and delectable layers of hop flavor. IPA 8% 16ozCAN" }
+      - { ref: mi_bentwater_sluice_juice }
+      - { id: mi_zero_gravity_conehead, name: "Zero Gravity Conehead", price_cents: 950,
+          description: "single hop wheat IPA, brewed with all Citra hops. Lighter in color and lower in a.b.v. than a typical American IPA, this beer has just the right amount of hop flavor and aroma. Completely satisfyingly awesome in its crispiness and well-rounded hopaliciousness. 5.7% 16oz CAN" }
+      - { id: mi_bent_water_double_thunderfunk, name: "Bent Water Double Thunderfunk", price_cents: 1250,
+          description: "The big brother of the best-selling Thunder Funk IPA. This big-bodied West Coast style Double IPA drinks deceptively smooth and delivers big hop flavors. Double the Thunder. 9.1% 16oz CAN" }
+      - { id: mi_sloop_brewing_juice_bomb, name: "Sloop Brewing Juice Bomb", price_cents: 1050,
+          description: "The low bitterness and late hopping showcase the citrusy, juicy notes of American hops. A blast of tropical aroma is followed by a resiny and balanced flavor. Juice bomb features all the aspects and nuances of full hop flavor — not just bitterness. An IPA for real hop lovers. 6.5% 16oz CAN" }
+      - { ref: mi_maine_lunch }
+      - { id: mi_voodoo_ranger_ipa, name: "Voodoo Ranger IPA", price_cents: 1000,
+          description: "Bursting with tropical aromas and juicy fruit flavors from Mosaic and Amarillo hops, this golden IPA is perfectly bitter with a refreshing sublime finish. 7% CAN 19.2oz" }
+      - { id: mi_voodoo_ranger_juice_force, name: "Voodoo Ranger Juice Force", price_cents: 1200,
+          description: "Juice Force IPA is a fruit-forward, highly drinkable 9.5% ABV blast. Buckle Up. With this hazy ipa, you'll be buzzing the tower in no time 9.5% CAN 19oz" }
+      - { ref: mi_bissel_brothers_substance }
+      - { id: mi_toppling_goliath_king_sue, name: "Toppling Goliath King Sue", price_cents: 1250,
+          description: "This full-bodied, hazy double IPA is Citra-hopped with a juicy combination of mango, orange, and pineapple flavors finishing with a grapefruit aroma and ferocious bite. 7.8% CAN" }
+      - { id: mi_zero_gravity_conehead_haze, name: "Zero Gravity Conehead Haze", price_cents: 950,
+          description: "This hazy IPA is a vibrant burst of juicy, tropical fruit and the perfect hint of pine. The blend of old school and new school hops balanced by crisp pilsner malt make this an unforgettable, modern classic. CAN 16oz 6.3%" }
+      - { id: mi_zero_gravity_madonna, name: "Zero Gravity Madonna", price_cents: 1250,
+          description: "Generously hopped Vermont Double IPA made with Pilsner malt and American wheat. Balanced, bright and highly satisfying 8% 16oz CAN" }
+      - { id: mi_foam_built_to_spill, name: "Foam Built To Spill", price_cents: 1250,
+          description: "Foam Brewers' Built to Spill is a New England-style double India pale ale (IPA) with 8% ABV. It's brewed in Burlington, Vermont, and has notes of citrus, pineapple, and tangerine. Some say it has a soft body, low bitterness, and a hop-centric flavor. 8% 16oz CAN" }
+      - { id: mi_fiddlehead_second_fiddle, name: "Fiddlehead Second Fiddle", price_cents: 1100,
+          description: "Extensively dry-hopped Double IPA, Second Fiddle is second in name only. It is big and aromatic with notes of citrus, tropical fruit and fresh pine. 8% CAN 16oz" }
+      - { id: mi_bells_two_hearted, name: "Bells Two Hearted", price_cents: 1150,
+          description: "Named after fishing waters in Michigan’s Upper Peninsula, Two Hearted is an American IPA brewed and dry hopped with 100% Centennial hops. Beloved by longtime and new craft beer drinkers, Two Hearted is an iconic ale that’s perfect for any occasion. 7% CAN 16oz" }
+  - id: sec_sours
+    name: "Sours"
+    items:
+      - { id: mi_weldworks_berlinish_fish, name: "Weldworks Berlinish Fish", price_cents: 1100 }
+      - { id: mi_weldworks_breakfast_in_bed, name: "Weldworks Breakfast in Bed", price_cents: 1100 }
+      - { id: mi_destill_sour_pickle, name: "Destill Sour Pickle", price_cents: 1050 }
+      - { id: mi_prairie_artisan_smoothie_esses, name: "Prairie Artisan Smoothie Esses", price_cents: 1050 }
+      - { id: mi_prairie_artisan_thai_delight, name: "Prairie Artisan Thai Delight", price_cents: 1050 }
+      - { id: mi_prairie_artisan_beach_drink, name: "Prairie Artisan Beach Drink", price_cents: 1050 }
+      - { id: mi_vanished_valley_fernando, name: "Vanished Valley Fernando", price_cents: 1150 }
+      - { id: mi_austin_street_after_the_glitter_fades, name: "Austin Street After the Glitter Fades", price_cents: 950 }
+      - { id: mi_drekkerfest_fluff_and_stuff, name: "Drekkerfest Fluff and Stuff", price_cents: 1050 }
+      - { id: mi_450_brewing_gassed_gummies, name: "450 Brewing Gassed Gummies", price_cents: 1050 }
+      - { id: mi_450_brewing_breaking_dab, name: "450 Brewing Breaking Dab", price_cents: 1050 }
+      - { id: mi_branch_and_blade_sack_lunch, name: "Branch and Blade Sack Lunch", price_cents: 1050 }
+      - { id: mi_japas_cervejaria_sawa_yuzu, name: "Japas Cervejaria Sawa Yuzu", price_cents: 1100 }
+      - { id: mi_long_live_hola_fantasma, name: "Long Live Hola Fantasma", price_cents: 1050 }
+      - { id: mi_mortaliish_hydra, name: "Mortaliish Hydra", price_cents: 1100 }
+  - id: sec_porters_stouts
+    name: "Porters & Stouts"
+    items:
+      - { ref: mi_guinness }
+  - id: sec_ciders_seltzers
+    name: "Ciders, Seltzer, Etc"
+    items:
+      - { id: mi_citizen_cider_the_dirty_mayor, name: "Citizen Cider The Dirty Mayor", price_cents: 1050,
+          description: "More sweet than dry with a ginger nip 16 oz CAN 5.2%" }
+      - { id: mi_citizen_unified_press, name: "Citizen Unified Press", price_cents: 1050,
+          description: "Dry hard apple cider 5.2% 16oz CAN" }
+      - { id: mi_downeast_original_blend, name: "Downeast Original Blend", price_cents: 950,
+          description: "Juicy and sweet, tastes and smells just like farm fresh cider you drank as a kid. Intensely flavorful." }
+      - { id: mi_stormalong_red_skies_at_night, name: "Stormalong Red Skies At Night", price_cents: 850, available: false,
+          description: "A tropical, fruit forward cider made with passionfruit and hibiscus. It has a rich finish and deep pink color. flavor 5.5% **temporarily unavailable**" }
+      - { id: mi_happy_dad_grape, name: "Happy Dad Grape", price_cents: 750,
+          description: "Happy Dad Grape Hard Seltzer is a true game-changer refreshment for those see king a crisp, delightful, gluten-free seltzer experience. Unlike other seltzers, it boasts a gentle level of carbonation, and its all-natural flavors ensure a pure and unadulterated taste that leaves no lingering aftertaste. All-natural Grape offering a light and invigorating sensation with every sip. 5% 12oz CAN" }
+      - { id: mi_happy_dad_fruit_punch, name: "Happy Dad Fruit Punch", price_cents: 750,
+          description: "Happy Dad Fruit Punch Hard Seltzer is a true game-changer refreshment for those seeking a crisp, delightful, gluten-free seltzer experience. Unlike other seltzers, it boasts a gentle level of carbonation, and its all-natural flavors ensure a pure and unadulterated taste that leaves no lingering aftertaste. Fruit Punch stands out as the crowd-pleaser among our flavors, offering a light and invigorating sensation with every sip. 5% 12oz CAN" }
+      - { id: mi_sunboy_pineapple, name: "Sunboy Pineapple", price_cents: 950,
+          description: "Hydrating coconut water and real pineapple juice, playfully spiked and sparked. No added sugar. 5% alcohol. You'll thank us tomorrow morning. 12oz CA" }
+      - { id: mi_sunboy_passion_fruit, name: "Sunboy Passion Fruit", price_cents: 950,
+          description: "All the goodness of hydrating coconut water and real passion fruit juice, playfully spiked and sparkled. Not too sweet. Refreshingly real. 5% ABV. 12ozCAN" }
+      - { id: mi_sunboy_tangerine, name: "Sunboy Tangerine", price_cents: 950,
+          description: "All the goodness of hydrating coconut water and real tangerine juice, playfully spiked and sparkled. Not too sweet. Refreshingly real. 5% ABV. 12ozCAN" }
+      - { id: mi_sunboy_mango, name: "Sunboy Mango", price_cents: 950,
+          description: "All the goodness of hydrating coconut water and real mango juice, playfully spiked and sparkled. Not too sweet. Refreshingly real. 5% ABV. 12ozCAN" }
+      - { id: mi_lightstrike_blue_rush, name: "Lightstrike Blue Rush", price_cents: 950,
+          description: "An icy-cool rush of berry and yuzu flavors. Crisp, Crushable, no carbonation , no nonsesnse, and no need to tap out. Contains 5% 16.9oz" }
+      - { id: mi_sun_cruiser_classic, name: "Sun Cruiser Classic", price_cents: 900 }
+      - { id: mi_sun_cruiser_half_and_half, name: "Sun Cruiser Half and Half", price_cents: 900 }
+  - id: sec_pale_ales_lagers
+    name: "Pale Ales & Lagers & Wheat & Pilsners & Fruited"
+    items:
+      - { ref: mi_3_floyds_zombie_dust }
+      - { ref: mi_aeronaut_robot_crush }
+      - { ref: mi_allagash_white }
+      - { ref: mi_exhibit_a_everyday_lager }
+      - { ref: mi_stella }
+      - { ref: mi_coors_light }
+      - { id: mi_zero_gravity_green_state_lager, name: "Zero Gravity Green State Lager", price_cents: 950,
+          description: "A crisp, easy-drinking Pilsner beer that is influenced by the great brewing regions of the world, but that charts its own course through this elegant style. 4.9% 16oz can" }
+      - { id: mi_narragansett_lager, name: "Narragansett Lager", price_cents: 575,
+          description: "Narragansett Lager is old reliable. It was the first beer brewed by “The Original Six” back in 1890, and the best selling beer in New England from the 1930’s to the 1970’s. It has crossed paths with Dr. Seuss, it was famously crushed by Captain Quint in Jaws, and it was the first alcoholic beverage to partner with a professional sports team – the Boston Red Sox from 1944-1975. Drinking a Lager is drinking to New England history. Hi Neighbor! Have a ‘Gansett!" }
+      - { id: mi_hero_95_low_carb, name: "Hero 95 (low carb)", price_cents: 700,
+          description: "Hero95 is a crisp and refreshing 95 calorie lager. It’s for beer drinkers who live with a purpose and care about the choices they make. For the People who make big and small sacrifices every day for the benefit of others and themselves. It’s for sharing with friends and enjoying the satisfying moments in life that make everything worth it. Because there’s a hero in all of us. 4% CAN 12oz" }
+      - { ref: mi_fat_tire }
+      - { id: mi_voodoo_ranger_hard_charged_tea, name: "Voodoo Ranger Hard Charged Tea", price_cents: 750,
+          description: "Hang on to your teabags, this 7% lemon-favored hard tea is the hardest tea on the shelf. CAN 12oz" }
+      - { id: mi_moat_mountain_brewing_miss_vs_blueberry_ale, name: "Moat Mountain Brewing Miss V's Blueberry Ale", price_cents: 850,
+          description: "0ur Naturally Flavored American Ale. We use 90 lbs. of Wild Maine Blueberries in every brew with our original process of adding the steam-extracted juices post fermentation. Our intent has always been; beer first, fruit second. The results showcase a remarkable crisp, light beer with a mild fruit flavor. 4.9% 16ozCAN" }
+      - { id: mi_sullivans_malting_red_ale, name: "Sullivan's Malting Red Ale", price_cents: 1100,
+          description: "A classic ruby ale with deep malt combining rich biscuit and gentle caramel notes. 5% 16oz CAN" }
+      - { id: mi_kona_big_wave, name: "Kona Big Wave", price_cents: 700,
+          description: "Kona Brewing Co. was founded by father and son team Cameron Healy and Spoon Khalsa. The pair had a vision to reflect the spirit, culture, and beauty of Hawaii in a collection of local island beers, so in 1994 they set out for the Big Island to bring their dream to life. Kona Big Wave, originally brewed as Pacific Golden Ale was brewed in 1994 and inspired by the legendary waves in Hawaii. Now, Kona Big Wave has rebranded from Kona Brewing Co. and is debuting a new logo and modernized packaging design, while staying true to the DNA of Big Wave. Kona Big Wave’s easy-drinking, island-inspired taste has become an iconic go-to beer all around the world. It’s time to grab your friends, bring the good vibes, and pass around a couple of ice-cold Kona Big Waves. 5.3% 16oz CAN" }
+      - { id: mi_widowmaker_riff_city_lager, name: "Widowmaker Riff City Lager", price_cents: 950,
+          description: "Brewed with a single malt imported from Germany and steeped noble hops. Biscuit-like aroma, mildly sweet yet crisp, with a subtle bitter bite culminating in an elevated yet simply delicious offering. Welcome to Riff City. 4.20% 16oz CAN" }
+      - { id: mi_naragansett_dels_shandy, name: "Naragansett Dels Shandy", price_cents: 575,
+          description: "Narragansett’s Famous Lager has been brewed & beloved throughout New England for over 120 years. The first Del’s stand opened in RI in 1948 using an old family recipe brought over from Italy. Since then, both ‘Gansett and Del’s Lemonade have refreshed thousands of happy customers on and around the Rhode Island beaches…and beyond. Now the two flavors are combined to create a most refreshing summertime adult beverage. We hope you love it!" }
+      - { id: mi_naragansett_fresh_catch, name: "Naragansett Fresh Catch", price_cents: 750 }
+  - id: sec_bottles
+    name: "Bottles"
+    items:
+      - { id: mi_bud_light, name: "Bud Light", price_cents: 600,
+          description: "Lager 5%" }
+      - { id: mi_budweiser, name: "Budweiser", price_cents: 600,
+          description: "Lager 5%" }
+      - { id: mi_michelob_ultra, name: "Michelob Ultra", price_cents: 650,
+          description: "Light Lager 4.2%" }
+      - { id: mi_miller_high_life, name: "Miller High Life", price_cents: 495,
+          description: "American Lager 4.6%" }
+      - { id: mi_corona_extra, name: "Corona Extra", price_cents: 700,
+          description: "Imported Lager 4.6%" }
+      - { id: mi_twisted_tea, name: "Twisted Tea", price_cents: 700 }
+      - { id: mi_sam_adams, name: "Sam Adams", price_cents: 750,
+          description: "Boston Lager 5%" }
+  - id: sec_white_wine
+    name: "White Wine"
+    items:
+      - { id: mi_kim_crawford_sauvignon_blanc, name: "Kim Crawford Sauvignon Blanc", price_cents: 950,
+          description: "A fresh, juicy wine with vibrant acidity and plenty of weight and length on the palate. Ripe, tropical fruit flavor with passion fruit, melon, and grapefruit. Listed prices: $9.50 / $34." }
+      - { id: mi_anterra_pinot_grigio, name: "Anterra Pinot Grigio", price_cents: 950,
+          description: "Cultivated from the vineyards in Sicily, this Pinot Grigio is dry in flavor and has a pleasant and delicate bouquet with fruity and floral notes. Listed prices: $9.50 / $34." }
+      - { id: mi_dreaming_tree_chardonnay, name: "Dreaming Tree Chardonnay", price_cents: 1050,
+          description: "Dreaming tree captures the essence of Central Coast wines. It is a big wine that is wonderfully drinkable solo or with food. It is fruity--and exceptionally well-balanced. Nice after taste--sort of a lingering spicy/citrus feel. Listed prices: $10.50 / $36." }
+      - { id: mi_lab_rose, name: "Lab Rose", price_cents: 850,
+          description: "Lab is a very versatile, fresh and light wine, made with traditional grape varieties of this region. Fruity with great acidity. Listed prices: $8.50 / $30." }
+      - { id: mi_misguided_vines_aurora_catarratto, name: "Misguided Vines Aurora Catarratto", price_cents: 1000,
+          description: "Catarratto (aka Lucido) has a lively, crisp, and zesty acidity that makes you think of Sicilian lemon trees basking in the sun. It is a native Sicilian grape, planted throughout the island. Aurora is a great example of how versatile and unique this grape can be." }
+  - id: sec_red_wine
+    name: "Red Wine"
+    items:
+      - { id: mi_meiomi_pinot_noir, name: "Meiomi Pinot Noir", price_cents: 1000,
+          description: "Discover the well balanced, richly flavored, and deliciously complex taste of Meiomi Pinot Noir. Lifted aromas of jammy fruit and toasty oak are followed by expressive dark berry, juicy strawberry, and toasty mocha flavors. Listed prices: $10 / $36." }
+      - { id: mi_dreaming_tree_crush, name: "Dreaming Tree Crush", price_cents: 1000,
+          description: "Crush is a special blend hand-selected from our favorite varieties. This wine pulls you in with notes of smoky berry and a pop of raspberry jam. Around the table or out on the patio, it's a wine you're going to want to share with your favorite people. Listed prices: $10 / $36." }
+      - { id: mi_leese_fitch_cabernet, name: "Leese-Fitch Cabernet", price_cents: 1000,
+          description: "A rich and bold expression with aromas of blackberry, toasted spice and tobacco leaf. The inviting aromas ring true on the juicy palate with loads of blackberry and boysenberry fruit flavors and layers of jam, allspice and sweet oak adding depth and richness. Listed prices: $10 / $36." }
+      - { id: mi_leese_fitch_merlot, name: "Leese-Fitch Merlot", price_cents: 1000,
+          description: "A bright and inviting with aromas of ripe red fruits; raspberry, cherry and pomegranate. Additional aromas of red currants, clove spice and sweet vanilla lead to a medium-bodied, juicy palate. Layers of juicy fruit flavors, black olive and notes of dried lavender add complexity. Listed prices: $10 / $36." }
+  - id: sec_cocktails
+    name: "Cocktails"
+    items:
+      - { id: mi_little_leaguer, name: "Little Leaguer", price_cents: 1050,
+          description: "A Creamsicle for grown-ups who are kids at heart. Stoli Vanilla, Triple Sec, Fanta Orange Soda" }
+      - { id: mi_the_undergrad, name: "The Undergrad", price_cents: 1050,
+          description: "Root Beer Float vibes without all the calories of the ice cream. Stoli Vanilla, Spiced Rum, Barq's Root Beer." }
+      - { id: mi_suicide_squeeze, name: "Suicide Squeeze", price_cents: 1150,
+          description: "Life is better with a margarita in your hand. Tortilla White Tequila, Triple Sec, Lime Juice, Simple Syrup. Make it spicy with Tanteo Jalapeno Tequila for $1 more" }
+      - { id: mi_the_pink_hat, name: "The Pink Hat", price_cents: 1250,
+          description: "Whether its your first game or your 50th, this is a great start to a gameday. Grapefruit Vodka, lime juice, ginger beer." }
+  - id: sec_burgers
+    name: "Burgers"
+    items:
+      - { id: mi_the_k_burger, name: "The \"K\" Burger", price_cents: 695, cooked_to_order: true,
+          description: "Bibb Lettuce, Tomato, Pickles, \"K Sauce\"" }
+      - { id: mi_double_patty_americana, name: "Double Patty Americana", price_cents: 1395, cooked_to_order: true,
+          description: "Two Beef Patties, American Cheese, Bacon, Bibb Lettuce, Tomato, Pickles, \"k\" Sauce, Fries" }
+      - { id: mi_the_smokehouse_burger, name: "The Smokehouse Burger", price_cents: 895, cooked_to_order: true,
+          description: "Beef Patty Cheddar Cheese, Bacon, Onion Ring, Cole Slaw, BBQ Sauce" }
+      - { id: mi_shroom_lover_burger, name: "Shroom Lover Burger", price_cents: 895, cooked_to_order: true,
+          description: "Beef Patty, Swiss Cheese, Roasted Mushrooms, Truffle Aioli" }
+      - { id: mi_the_breakfast_burger, name: "The Breakfast Burger", price_cents: 895, cooked_to_order: true,
+          description: "Beef Pattie, Fried Egg, Bacon, Caramelized Onions, American Cheese, Chipotle Aioli" }
+      - { id: mi_crispy_chicken_sandwich, name: "Crispy Chicken Sandwich", price_cents: 995,
+          description: "Battered Chicken Breast, Bibb Lettuce, Tomato, Honey Buffalo Sauce" }
+      - { id: mi_cali_burger, name: "Cali Burger", price_cents: 895,
+          description: "Turkey Patty, Cheddar Cheese, Guacamole, Jalapenos. Chipotle Aioli" }
+      - { id: mi_the_beyond_meat_burger_vegetarian, name: "The Beyond Meat Burger (Vegetarian)", price_cents: 995,
+          description: "Vegetable Patty, Bibb Lettuce, Tomato, Onions, Roasted Pepper Sauce" }
+  - id: sec_hot_dogs
+    name: "Hot Dogs"
+    items:
+      - { id: mi_the_basic_dog, name: "The Basic Dog", price_cents: 450,
+          description: "Plain Hot Dog" }
+      - { id: mi_snoop_dog_ripper, name: "Snoop Dog Ripper", price_cents: 525,
+          description: "Deep-Fried Hot Dog, Smoked Onions and Peppers, Yellow Mustard" }
+      - { id: mi_chili_cheese_dog, name: "Chili Cheese Dog", price_cents: 595,
+          description: "Beef Chili, Beer Cheese, Diced White Onion" }
+      - { id: mi_tijuana_street_dog, name: "Tijuana Street Dog", price_cents: 550,
+          description: "Cheddar Jack Cheese, Bacon, Diced White Onion, Cholula Hot Sauce" }
+      - { id: mi_the_brunch_dog, name: "The Brunch Dog", price_cents: 595,
+          description: "Fried Egg, Bacon, Cheddar Jack Cheese, Chipotle Aioli" }
+      - { id: mi_the_veg_dog, name: "The Veg \"Dog\"", price_cents: 695,
+          description: "Beyond Meat Seet Italian Sausage, Sauteed Onions, Roasted Pepper Sauce" }
+  - id: sec_appetizers_salads
+    name: "Appetizers, Salads and More"
+    items:
+      - { id: mi_chicken_wings, name: "Chicken Wings", price_cents: 1395,
+          description: "Choice of Buffalo, Teriyaki, Kenmore Dry Rub, BBQ, Honey Buffalo, Sweet Chili, or Plain" }
+      - { id: mi_kenmore_nachos, name: "Kenmore Nachos", price_cents: 1495,
+          description: "Tortilla Chips, Cheddar Jack Cheese, Black Beans, Jalapenos, Salsa Fresca, Guacamole, Sour Cream. Listed prices: Full Tray $14.95 / Half Tray $8.50." }
+      - { id: mi_chicken_quesadilla, name: "Chicken Quesadilla", price_cents: 1295,
+          description: "Roasted Chicken, Cheddar Jack Cheese, Scallion, Salsa Fresca, Sour Cream" }
+      - { id: mi_pretzel_bites, name: "Pretzel Bites", price_cents: 995,
+          description: "Cheese and Beer Mustard Sauce" }
+      - { id: mi_kenmore_fries_tray, name: "Kenmore Fries Tray", price_cents: 695,
+          description: "French Fries, Kenmore Seasoning, Ranch dipping Sauce" }
+      - { id: mi_chicken_tenders, name: "Chicken Tenders", price_cents: 1395,
+          description: "Chicken Tenders with Honey Mustard, Buffalo, Kenmore Dry Rub, BBQ, Teriyaki, Honey Buffalo, Sweet Chili. Tenders can be tossed in Sauce. Add: French Fries $2.95, K Fries $4." }
+      - { id: mi_crispy_brussels_sprouts, name: "Crispy Brussels Sprouts", price_cents: 1095,
+          description: "Spicy Honey Ranch, Bacon Crumble" }
+      - { id: mi_mozzarella_sticks, name: "Mozzarella Sticks", price_cents: 995 }
+      - { id: mi_chips_and_chunky_guacamole, name: "Chips and Chunky Guacamole", price_cents: 895 }
+      - { id: mi_chili_cheese_fries, name: "Chili Cheese Fries", price_cents: 895,
+          description: "Beef Chili, Beer Cheese" }
+      - { id: mi_beef_black_bean_chili, name: "Beef Black Bean Chili", price_cents: 995,
+          description: "Cheddar Jack Cheese, Tortilla Chips" }
+      - { id: mi_chopped_salad, name: "Chopped Salad", price_cents: 1095,
+          description: "Romaine Lettuce, Bacon, Tomato, Cucumber, Red Onion, Cheddar Jack Cheese, Ranch Dressing Add Fried Chicken $4.95" }

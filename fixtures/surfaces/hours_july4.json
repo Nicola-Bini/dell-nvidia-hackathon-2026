@@ -1,0 +1,72 @@
+{
+  "surface_id": "s_hours_july4",
+  "kind": "answer",
+  "title": "Hours",
+  "say": "Closed on Sunday 4 July 2027.",
+  "views": [
+    {
+      "id": "v1",
+      "component": "HoursCard",
+      "data": {
+        "date": "2027-07-04",
+        "status": "closed",
+        "opens": null,
+        "closes": null,
+        "note": "Independence Day",
+        "week": [
+          {
+            "days": [
+              "sun"
+            ],
+            "opens": "10:00",
+            "closes": "01:00"
+          },
+          {
+            "days": [
+              "mon",
+              "tue",
+              "wed"
+            ],
+            "opens": "11:00",
+            "closes": "01:00"
+          },
+          {
+            "days": [
+              "thu",
+              "fri",
+              "sat"
+            ],
+            "opens": "11:00",
+            "closes": "02:00"
+          }
+        ]
+      },
+      "actions": [],
+      "text": "Closed on Sunday 4 July 2027. Independence Day. Regular hours: Sunday 10:00 AM to 1:00 AM; Monday to Wednesday 11:00 AM to 1:00 AM; Thursday to Saturday 11:00 AM to 2:00 AM. Closing times are after midnight, on the next day."
+    },
+    {
+      "id": "v2",
+      "component": "GoalCTA",
+      "data": {
+        "label": "Book a table"
+      },
+      "actions": [
+        {
+          "name": "open_view:booking",
+          "handler": "client"
+        }
+      ],
+      "text": ""
+    }
+  ],
+  "chips": [
+    "When does the kitchen close?",
+    "See the menu"
+  ],
+  "meta": {
+    "cache": "miss",
+    "latency_ms": 1840,
+    "graph_version": 7,
+    "model": "local"
+  }
+}

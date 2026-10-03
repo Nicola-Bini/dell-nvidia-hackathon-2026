@@ -1,0 +1,45 @@
+# 30 intents with their expected selection (schema section 10). Dates assume the resolver is
+# pinned to 2026-10-03. `expect` is checked against the model's selection; `binder` against
+# the bound Surface. Pass: 100% schema-valid, at least 27 of 30 correct components.
+intents:
+  - { text: "vegetarian options", expect: { component: MenuList, diet: diet_vegetarian, order: false } }
+  - { text: "I want to pick up something vegetarian",
+      expect: { component: MenuList, diet: diet_vegetarian, order: true } }
+  - { text: "what burgers do you have?", expect: { component: MenuList, section: sec_burgers } }
+  - { text: "show me the hot dogs", expect: { component: MenuList, section: sec_hot_dogs } }
+  - { text: "what's on draft?", expect: { component: MenuList, section: sec_draft_beer } }
+  - { text: "which IPAs do you have", expect: { component: MenuList, section: sec_ipas } }
+  - { text: "any sour beers?", expect: { component: MenuList, section: sec_sours } }
+  - { text: "do you have cocktails", expect: { component: MenuList, section: sec_cocktails } }
+  - { text: "red wine by the glass", expect: { component: MenuList, section: sec_red_wine } }
+  - { text: "do you have Guinness?", expect: { component: MenuList, items: [mi_guinness] } }
+  - { text: "how much are the chicken wings", expect: { component: MenuList, items: [mi_chicken_wings] } }
+  - { text: "what's in the Shroom Lover burger",
+      expect: { component: MenuList, items: [mi_shroom_lover_burger] } }
+  - { text: "is there a gluten free beer?",
+      expect: { component: MenuList, diet: diet_gluten_free },
+      binder: "every badge renders 'not verified, ask staff'" }
+  - { text: "is the veg dog vegetarian?",
+      expect: { component: MenuList, items: [mi_the_veg_dog] },
+      binder: "'not verified, ask staff', never a badge" }
+  - { text: "I'm allergic to peanuts",
+      expect: { component: AllergenNotice, allergen: alg_peanuts }, binder: "no MenuList" }
+  - { text: "nut-free dishes", expect: { component: AllergenNotice }, binder: "no MenuList" }
+  - { text: "are you open tonight?", expect: { component: HoursCard }, binder: "GoalCTA: Book a table" }
+  - { text: "what time do you close on Saturday", expect: { component: HoursCard } }
+  - { text: "are you open on the 4th of July?",
+      expect: { component: HoursCard }, binder: "date 2027-07-04, status closed" }
+  - { text: "are you open on Thanksgiving?",
+      expect: { component: HoursCard }, binder: "date 2026-11-26, status closed" }
+  - { text: "when does the kitchen close?", expect: { component: Answer, faq: faq_kitchen_hours } }
+  - { text: "do you do brunch?", expect: { component: Answer, faq: faq_brunch } }
+  - { text: "can I get delivery?", expect: { component: Answer, faq: faq_takeout_delivery } }
+  - { text: "can I add bacon to my burger?", expect: { component: Answer, faq: faq_burger_adds_sides } }
+  - { text: "can I host a birthday party there?", expect: { component: Answer, faq: faq_private_events } }
+  - { text: "table for 4 on Friday at 7pm",
+      expect: { component: BookingForm }, binder: "prefill date 2026-10-09, time 19:00, party_size 4" }
+  - { text: "do you cater for 40?",
+      expect: { component: CateringQuoteForm }, binder: "prefill headcount 40; no booking CTA" }
+  - { text: "I'd like to send you a message", expect: { component: FormCard, form: ui_form_contact } }
+  - { text: "is there parking nearby?", expect: { kind: gap, topic: parking } }
+  - { text: "tell me a joke", expect: { kind: off_topic } }

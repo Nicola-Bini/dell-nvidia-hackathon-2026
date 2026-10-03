@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Fails if this branch changes a file outside its lane. Lanes own disjoint paths, so a
+# branch that passes cannot conflict with another lane's branch.
+# The lane is the branch prefix: je/wp3-changes -> je. Override with LANE=<name>.
+set -euo pipefail
+
+root="$(git rev-parse --show-toplevel)"
+branch="$(git rev-parse --abbrev-ref HEAD)"
+lane="${LANE:-${branch%%/*}}"
+base="${BASE:-origin/main}"
+
+prefixes="$(sed -n "s/^${lane}:[[:space:]]*//p" "$root/tools/lanes.conf")"
+if [ -z "$prefixes" ]; then
+  echo "lane-check: branch '$branch' has no lane. Name it <lane>/<wp>-<slug>" \
+       "with lane one of: blake, je, cj, nico." >&2
+  exit 1
+fi
+prefixes="$prefixes docs/team/status/${lane}.md docs/team/requests/${lane}-"
+
+changed="$( { git diff --name-only "$base"...HEAD; git diff --name-only HEAD; \
+              git ls-files --others --exclude-standard; } | sort -u)"
+
+bad=0
+while IFS= read -r file; do
+  [ -z "$file" ] && continue
+  ok=0
+  for prefix in $prefixes; do
+    case "$file" in "$prefix"*) ok=1; break ;; esac
+  done
+  if [ "$ok" -eq 0 ]; then
+    echo "lane-check: '$file' is outside lane '$lane'" >&2
+    bad=1
+  fi
+done <<< "$changed"
+
+if [ "$bad" -ne 0 ]; then
+  echo "lane-check: FAIL. Undo those edits and file a request instead:" \
+       "docs/team/requests/${lane}-to-<owner>-<nn>-<slug>.md" >&2
+  exit 1
+fi
+echo "lane-check: PASS (lane '$lane')"

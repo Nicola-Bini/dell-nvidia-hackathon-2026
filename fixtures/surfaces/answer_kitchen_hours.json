@@ -1,0 +1,44 @@
+{
+  "surface_id": "s_answer_kitchen_hours",
+  "kind": "answer",
+  "title": "Answer",
+  "say": "",
+  "views": [
+    {
+      "id": "v1",
+      "component": "Answer",
+      "data": {
+        "question": "When does the kitchen close?",
+        "answer": "Kitchen closes at 11:30pm Sunday-Thursday and 12:30am Friday and Saturday.",
+        "verified": false,
+        "verified_at": null
+      },
+      "actions": [],
+      "text": "When does the kitchen close? Kitchen closes at 11:30pm Sunday-Thursday and 12:30am Friday and Saturday."
+    },
+    {
+      "id": "v2",
+      "component": "GoalCTA",
+      "data": {
+        "label": "Book a table"
+      },
+      "actions": [
+        {
+          "name": "open_view:booking",
+          "handler": "client"
+        }
+      ],
+      "text": ""
+    }
+  ],
+  "chips": [
+    "See the menu",
+    "Are you open tonight?"
+  ],
+  "meta": {
+    "cache": "miss",
+    "latency_ms": 1840,
+    "graph_version": 7,
+    "model": "local"
+  }
+}

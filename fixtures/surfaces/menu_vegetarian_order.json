@@ -1,0 +1,83 @@
+{
+  "surface_id": "s_menu_vegetarian_order",
+  "kind": "answer",
+  "title": "Vegetarian",
+  "say": "Here is what matches.",
+  "views": [
+    {
+      "id": "v1",
+      "component": "MenuList",
+      "data": {
+        "title": "Vegetarian",
+        "items": [
+          {
+            "id": "mi_the_beyond_meat_burger_vegetarian",
+            "name": "The Beyond Meat Burger (Vegetarian)",
+            "price": "$9.95",
+            "description": "Vegetable Patty, Bibb Lettuce, Tomato, Onions, Roasted Pepper Sauce",
+            "badges": [
+              {
+                "diet": "Vegetarian",
+                "verified": true
+              }
+            ]
+          },
+          {
+            "id": "mi_the_veg_dog",
+            "name": "The Veg \"Dog\"",
+            "price": "$6.95",
+            "description": "Beyond Meat Seet Italian Sausage, Sauteed Onions, Roasted Pepper Sauce",
+            "badges": [
+              {
+                "diet": "Vegetarian",
+                "verified": false
+              }
+            ]
+          }
+        ],
+        "more": null
+      },
+      "actions": [
+        {
+          "name": "add_to_cart",
+          "handler": "client"
+        }
+      ],
+      "text": "Vegetarian (confirmed by the restaurant): The Beyond Meat Burger (Vegetarian), $9.95. Not verified, ask staff: The Veg \"Dog\", $6.95."
+    },
+    {
+      "id": "v2",
+      "component": "AllergenNotice",
+      "data": {
+        "allergen": null,
+        "contains": []
+      },
+      "actions": [],
+      "text": "Before placing your order, please inform your server if a person in your party has a food allergy."
+    },
+    {
+      "id": "v3",
+      "component": "GoalCTA",
+      "data": {
+        "label": "Book a table"
+      },
+      "actions": [
+        {
+          "name": "open_view:booking",
+          "handler": "client"
+        }
+      ],
+      "text": ""
+    }
+  ],
+  "chips": [
+    "What's on draft?",
+    "Book a table"
+  ],
+  "meta": {
+    "cache": "miss",
+    "latency_ms": 1840,
+    "graph_version": 7,
+    "model": "local"
+  }
+}

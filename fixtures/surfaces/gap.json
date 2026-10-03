@@ -1,0 +1,36 @@
+{
+  "surface_id": "s_gap",
+  "kind": "gap",
+  "title": "Call us",
+  "say": "We haven't confirmed that yet. Please ask our staff.",
+  "views": [
+    {
+      "id": "v1",
+      "component": "FactCard",
+      "data": {
+        "title": "Call us",
+        "label": "Business",
+        "facts": [
+          {
+            "name": "Phone",
+            "value": "+1 617 266 6662"
+          }
+        ],
+        "verified": false
+      },
+      "actions": [],
+      "text": "We haven't confirmed that yet. Please ask our staff. Phone: +1 617 266 6662."
+    }
+  ],
+  "chips": [
+    "What's on draft?",
+    "Vegetarian options",
+    "Are you open tonight?"
+  ],
+  "meta": {
+    "cache": "miss",
+    "latency_ms": 1620,
+    "graph_version": 7,
+    "model": "local"
+  }
+}

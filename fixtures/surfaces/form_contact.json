@@ -1,0 +1,84 @@
+{
+  "surface_id": "s_form_contact",
+  "kind": "answer",
+  "title": "Contact",
+  "say": "Send us a message and we'll get back to you.",
+  "views": [
+    {
+      "id": "v1",
+      "component": "FormCard",
+      "data": {
+        "form": "ui_form_contact",
+        "title": "Contact",
+        "fields": [
+          {
+            "name": "name",
+            "type": "text",
+            "label": "Name",
+            "required": true
+          },
+          {
+            "name": "email",
+            "type": "text",
+            "label": "Email",
+            "required": true
+          },
+          {
+            "name": "phone",
+            "type": "text",
+            "label": "Phone Number",
+            "required": true
+          },
+          {
+            "name": "topic",
+            "type": "select",
+            "label": "What are you getting in touch about?",
+            "required": false,
+            "options": [
+              "General Inquiry",
+              "Press Inquiry"
+            ]
+          },
+          {
+            "name": "message",
+            "type": "text",
+            "label": "Your Message",
+            "required": true
+          }
+        ],
+        "submit_label": "Send"
+      },
+      "actions": [
+        {
+          "name": "submit_form",
+          "handler": "server"
+        }
+      ],
+      "text": "Send The Kenmore a message: Name, Email, Phone Number, What are you getting in touch about?, Your Message."
+    },
+    {
+      "id": "v2",
+      "component": "GoalCTA",
+      "data": {
+        "label": "Book a table"
+      },
+      "actions": [
+        {
+          "name": "open_view:booking",
+          "handler": "client"
+        }
+      ],
+      "text": ""
+    }
+  ],
+  "chips": [
+    "See the menu",
+    "Are you open tonight?"
+  ],
+  "meta": {
+    "cache": "miss",
+    "latency_ms": 1840,
+    "graph_version": 7,
+    "model": "local"
+  }
+}
