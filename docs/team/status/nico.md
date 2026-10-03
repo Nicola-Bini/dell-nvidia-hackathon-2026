@@ -11,6 +11,20 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 | wp5 | sandbox proofs pass; digest heartbeat pending | this PR | `box/egress_demo.sh` -> 7 PASS (16:10 ET): `/owner/**` allowed; `/openapi.json` on the same port, example.com, github.com, the database, the Serve API and the model server all refused. `box/recover.sh` after killing the Owner API, Serve API and llama-server -> ALL UP in 24 s |
 | wp6 | partial: deployed, load-tested | [#23](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/23) | `box/up.sh` -> ALL UP; `uv run bench/load_test.py -n 24` -> table below, 0 errors at 4 concurrent. Agent-turn-in-flight row waits on wp3 |
 
+## 17:00 gate: both loops on the box, run by the sandboxed agent (16:20 ET): PASS
+
+From `box/demo_reset.sh` (seed plus 12 gift-card and 5 parking sessions), with the Hermes
+agent in sandbox `blake3`, through je's Owner API and the real Serve API:
+
+| Step | Agent turn | Result |
+|---|---|---|
+| Move 1 (`box/agent_turn.sh move1`) | 5.8 s | "5 visitors asked about parking. I have nothing confirmed. What should I tell them?" (gift cards skipped: a plan covers it) |
+| Owner reply recorded (`box/agent_turn.sh answer gap_parking "..."`) | 8.3 s | FAQ in the owner's words, published; "where can I park" on the Serve API returns it as `Answer` |
+| Move 2 (`box/agent_turn.sh move2`) | 10.6 s | pending, one tap: `create_label` GiftCard, 2 `create_node`, `create_component` |
+
+Cut line 3 not needed. Owner-channel delivery (Telegram) is the one part not shown: see
+Blocked on.
+
 ## Measured numbers
 
 Box: Dell GB10, aarch64, 121 GB unified memory (about 89 GB available with qwen3.6:35b loaded).
@@ -48,6 +62,10 @@ Box: Dell GB10, aarch64, 121 GB unified memory (about 89 GB available with qwen3
   `/v1/metrics` after the intents run: p50 12 ms, p95 516 ms, cache hit rate 0.71.
 
 ## Decisions
+
+- Heartbeat turns use one explicit command per prompt (`agent/HEARTBEAT.md`). A free-form
+  "do move 1" turn wandered for 79 s, ran out of turns and tried hand-built changes (all
+  refused, nothing written). Explicit prompts take 6 to 11 s.
 
 - OpenShell rule `cac_owner_api` uses explicit GET/POST `/owner/**` rules and no access
   preset: the `read-write` preset silently allowed every path on the port (the egress demo

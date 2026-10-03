@@ -145,7 +145,8 @@ def main(argv: list[str]) -> int:
         "publish": lambda: api.call("POST", "/owner/publish"),
         "propose": lambda: propose_plan(api, a.plan, a.topic),
         "change": lambda: post_change(api, a),
-        "changes": lambda: api.call("GET", "/owner/changes?state=" + a.state),
+        "changes": lambda: api.call(
+            "GET", "/owner/changes" + (f"?state={a.state}" if a.state else "")),
         "gaps": lambda: api.call("GET", "/owner/gaps?state=open"),
     }
     handler = handlers.get(a.cmd, lambda: api.call("GET", f"/owner/{a.cmd}"))
