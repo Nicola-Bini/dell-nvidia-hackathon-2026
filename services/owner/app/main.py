@@ -28,9 +28,13 @@ app = create_app()
 
 
 def run() -> None:
+    """Serve on OWNER_HOST:OWNER_PORT (default 0.0.0.0:8081): the address the sandbox can reach."""
+    import os
+
     import uvicorn
 
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8081)
+    uvicorn.run("app.main:app", host=os.environ.get("OWNER_HOST", "0.0.0.0"),
+                port=int(os.environ.get("OWNER_PORT", "8081")))
 
 
 if __name__ == "__main__":

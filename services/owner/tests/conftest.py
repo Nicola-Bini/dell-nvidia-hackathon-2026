@@ -52,6 +52,11 @@ NODES = [  # id, label, name, props, visibility, status
 ]
 
 
+TRUNCATE = ("TRUNCATE kg.change, kg.edge, kg.node, kg.edge_type, kg.label, kg_public.edge,"
+            " kg_public.node, kg_public.meta, ops.intent_log, ops.intent_cache, ops.lead,"
+            " ops.sync_state RESTART IDENTITY CASCADE")
+
+
 def serve_is_down(request: httpx.Request) -> httpx.Response:
     raise httpx.ConnectError("serve api is not running in tests", request=request)
 
@@ -102,9 +107,7 @@ def seed_graph(conn: psycopg.Connection) -> None:
 def db(pg):
     """A clean database with the fixture graph. Yields a cac_owner connection."""
     with psycopg.connect(pg["admin"], autocommit=True) as admin:
-        admin.execute("TRUNCATE kg.change, kg.edge, kg.node, kg.edge_type, kg.label, "
-                      "kg_public.edge, kg_public.node, kg_public.meta, ops.intent_log, "
-                      "ops.intent_cache, ops.lead, ops.sync_state RESTART IDENTITY CASCADE")
+        admin.execute(TRUNCATE)
     with psycopg.connect(pg["owner"], row_factory=psycopg.rows.dict_row) as conn:
         seed_graph(conn)
         conn.commit()
