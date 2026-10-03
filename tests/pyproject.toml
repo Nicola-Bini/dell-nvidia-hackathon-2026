@@ -22,7 +22,7 @@ cac-common = { path = "../packages/cac_common", editable = true }
 
 [tool.pytest.ini_options]
 # See services/serve/pyproject.toml: do not rely on editable .pth files.
-pythonpath = ["../packages/cac_common"]
+pythonpath = ["../packages/cac_common", "e2e"]
 markers = ["e2e: needs the Serve API and the Owner tools API running"]
 
 [tool.ruff]

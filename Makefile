@@ -32,8 +32,8 @@ serve: env        ## run the Serve API on SERVE_PORT (default 8080; the box uses
 	  uv run uvicorn cac_serve.main:app --host $${SERVE_HOST:-127.0.0.1} \
 	  --port $${SERVE_PORT:-$$(sed -n 's/^SERVE_PORT=//p' ../../.env | tail -1 | grep . || echo 8080)}
 
-fake-llm:         ## laptop stand-in for the model on 127.0.0.1:8000
-	uv run tools/fake_llm/server.py --port 8000
+fake-llm:         ## laptop stand-in for the model on 127.0.0.1:8000 (FAKE_LLM_PORT to change)
+	uv run tools/fake_llm/server.py --port $${FAKE_LLM_PORT:-8000}
 
 lane-check:       ## this branch only touches its own lane
 	tools/lane-check

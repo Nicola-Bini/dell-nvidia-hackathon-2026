@@ -11,7 +11,7 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 | wp5 Actions and presets | merged | [#10](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/10) | `cd services/serve && uv run pytest tests/actions tests/api` -> lead row exists (read as `cac_owner`), past date is 422, fourth lead in an hour is 429, presets bound from the graph, CTA counted (14:54 ET) |
 | wp6 Safety and steer | merged | [#10](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/10) | `cd services/serve && uv run pytest tests/intents/test_section10.py tests/binder/test_binder_safety.py` -> green: unverified diet never a badge, allergen never a dish list, goal steer, generic components for an agent-created label and form (14:54 ET) |
 | wp7 Privacy proofs | merged | [#10](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/10) | `uv run --project tests python scripts/canary.py` -> exit 0, 40 prompts, 47 responses, canary and goals in none; `uv run --project tests python scripts/permission_check.py` -> 5 of 5 reads denied (14:55 ET). MCP tools are probed when `MCP_BASE_URL` is set |
-| wp8 End to end | not started | | |
+| wp8 End to end | Serve side merged; owner-API side waits for je's wp5 | PR_X | `uv run --project tests pytest tests/e2e` (needs `make fake-llm serve`) -> 3 passed, 1 skipped (widget not built): gap loop and agent-added type plus form, each with no restart, and pre-warm. The owner side of each loop is written straight to the database until je's API is on `main` (15:07 ET) |
 
 ## What other lanes can rely on now
 
@@ -84,10 +84,19 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
   whitespace and a small model padded every answer to `max_tokens`.
 - 15:00 MenuList: named items that all fall outside the chosen diet or section are ignored
   (the diet or section list is shown) instead of binding to nothing.
+- 15:04 PR #13 was merged with one failing test (a fixture-order mistake of mine hidden by a
+  shell pipeline); fixed 70 seconds later in PR #14. Proof runs now use `set -o pipefail`.
+- 15:06 This laptop's ports 8000 and 8080 belong to unrelated programs, so its git-ignored
+  `.env` uses 8010 (fake model) and 8082 (Serve API). Nothing committed depends on that.
 - 14:50 `X-CAC-Channel` is ignored when a forwarding header is present, so a request through
   a tunnel or proxy on the box can never pass as `mcp` or `prewarm`.
 - 14:50 A database outage answers HTTP 503 `{"detail": "database unavailable"}`; an
   unpublished graph answers 503 on `/v1/bootstrap` and `/v1/intent`.
+
+## Requests filed
+
+- `blake-to-nico-01-serve-start` (15:08): `box/up.sh` must start `cac_serve.main:app` and
+  run `make seed` first; asks for the 30-intent and canary proofs on the box.
 
 ## Requests handled
 
@@ -98,4 +107,7 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 
 ## Blocked on
 
-Nothing.
+- wp8, owner-API half: je's `/owner/topics`, `/owner/answers` and `/owner/publish` (je wp5)
+  are not on `main`. je and cj have pushed branches but opened no PR; their status says
+  `gh auth login` is needed. Asked Blake (NEED_INPUT, 15:08).
+- 17:00 gate on the box: needs nico to deploy `main` (request above).
