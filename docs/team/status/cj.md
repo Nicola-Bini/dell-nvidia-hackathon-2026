@@ -5,10 +5,10 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 | Package | State | PR | Proof and result |
 |---|---|---|---|
 | wp1 Widget shell | merged in this PR | (this PR) | `npm test` in `apps/widget` -> 21 passed (every file in `fixtures/surfaces/` renders); `npm run build` writes `dist/` (14:53 ET) |
-| wp2 Components | merged in this PR | (this PR) | `npm test` in `apps/widget` -> 46 passed: a test per component on its golden view, "an unverified badge never shows the verified mark", XSS strings render as text (15:05 ET) |
-| wp3 Demo site and embed | merged in this PR | (this PR) | `npm test` in `apps/widget` -> 53 passed (embed: box unreachable or slow -> no iframe and links still work; a preset link posts `cac:view`); `npm test` in `apps/demo-site` -> 5 passed (15:20 ET) |
-| wp4 Interaction | merged in this PR | (this PR) | `npm test` in `apps/widget` -> 62 passed, including mock-transport submit success, submit 422 (field errors), cart count, goal button `?src=cta`, `cac:view` from the parent, `session_id` in sessionStorage (15:27 ET) |
-| wp5 Overlay and states | merged in this PR | (this PR) | `npm test` in `apps/widget` -> 67 passed, including "renders the seam 3 metrics shape", stale on a failed poll, key toggle, offline state (15:35 ET) |
+| wp2 Components | merged in this PR | (this PR) | `npm test` in `apps/widget` -> 46 passed: a test per component on its golden view, "an unverified badge never shows the verified mark", XSS strings render as text (14:57 ET) |
+| wp3 Demo site and embed | merged in this PR | (this PR) | `npm test` in `apps/widget` -> 53 passed (embed: box unreachable or slow -> no iframe and links still work; a preset link posts `cac:view`); `npm test` in `apps/demo-site` -> 5 passed (14:59 ET) |
+| wp4 Interaction | merged in this PR | (this PR) | `npm test` in `apps/widget` -> 62 passed, including mock-transport submit success, submit 422 (field errors), cart count, goal button `?src=cta`, `cac:view` from the parent, `session_id` in sessionStorage (15:00 ET) |
+| wp5 Overlay and states | merged in this PR | (this PR) | `npm test` in `apps/widget` -> 67 passed, including "renders the seam 3 metrics shape", stale on a failed poll, key toggle, offline state (15:01 ET) |
 | wp6 MCP build, history rail (P1) | not started | | |
 
 ## What other lanes can rely on now
@@ -43,18 +43,18 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
   an empty prefill.
 - 14:50 Node 24 on this laptop; `engines` says `>=22`, matching SCHEMA's Node 22.
 
-- 15:05 Forms keep native `required` attributes, but the widget never blocks a submit in
+- 14:57 Forms keep native `required` attributes, but the widget never blocks a submit in
   JS: the server's 422 errors are shown next to each field (unknown fields at the top).
-- 15:05 `BookingForm` with a `booking_url` shows only a link to that booking page.
+- 14:57 `BookingForm` with a `booking_url` shows only a link to that booking page.
 
-- 15:20 embed.js treats any non-2xx `/healthz` as down, as well as a timeout. Only the four
+- 14:59 embed.js treats any non-2xx `/healthz` as down, as well as a timeout. Only the four
   P0 presets are intercepted, and modified clicks (ctrl, cmd, shift, middle) are left to the
   browser. Messages go to the box origin only.
 
-- 15:35 Overlay: the backquote key toggles it. The widget starts with it on at `?overlay=1`,
+- 15:01 Overlay: the backquote key toggles it. The widget starts with it on at `?overlay=1`,
   and the host page passes that on with `?cac_overlay=1`. embed.js forwards the key from the
   host page as `cac:overlay`. It polls `/v1/metrics` every second, only while shown.
-- 15:35 States: busy ("One moment…"), error (with a "Show the menu" way out), and offline
+- 15:01 States: busy ("One moment…"), error (with a "Show the menu" way out), and offline
   (from the browser's online and offline events). The server's busy fallback is an
   ordinary surface.
 
