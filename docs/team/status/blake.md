@@ -6,7 +6,7 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 |---|---|---|---|
 | wp1 Graph write side | merged | [#5](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/5) | `make db-reset seed && uv run --project tests pytest tests/graph` -> 79 passed; `make db-check` ok; `make fixtures-check` OK (14:47 ET) |
 | wp2 Serve API stub and fake model | merged | [#8](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/8) | `cd services/serve && uv run pytest tests/api` -> 75 passed (every `index.json` entry returns its golden; start-up refuses a non-local `LLM_BASE_URL`); `uv run --with pytest --with jsonschema pytest tools/fake_llm` -> 48 passed (14:52 ET) |
-| wp3 Pipeline, front half | building | | |
+| wp3 Pipeline, front half | merged | [#9](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/9) | `cd services/serve && uv run pytest tests/pipeline` -> 172 passed: SCHEMA 8.2 slots pinned to 2026-10-03, section 6 expansions, schema builder reproduces the 8.1 shape, 18 retrieval smoke intents (14:52 ET) |
 | wp4 Pipeline, back half | building | | |
 | wp5 Actions and presets | tests written | | |
 | wp6 Safety and steer | tests written | | |
@@ -57,6 +57,9 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 - 14:50 `fixtures/surfaces/gift_cards.json`: the FormCard `text` was hand-written prose no
   template can produce; it is now the template output ("Request a gift card: Your name,
   Email or phone, Amount."). Only the assistant-facing `text` changed, not `data`.
+- 14:52 Retrieval fallback scoring and the hours-word entries are written into SCHEMA
+  section 6. `ListCard.label` never offers `Service` (matches the 8.1 example).
+- 14:52 Slots: a count over 20 is a headcount even after "table for"; `N/N` is month/day.
 - 14:50 `X-CAC-Channel` is ignored when a forwarding header is present, so a request through
   a tunnel or proxy on the box can never pass as `mcp` or `prewarm`.
 - 14:50 A database outage answers HTTP 503 `{"detail": "database unavailable"}`; an
