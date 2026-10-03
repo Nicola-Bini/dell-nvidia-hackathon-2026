@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs one agent turn in the sandbox from a prompt in agent/HEARTBEAT.md, or a reply:
-#   box/agent_turn.sh move1|move2|digest
+#   box/agent_turn.sh move1|move2|grow|digest
 #   box/agent_turn.sh answer <gap_id> "<owner's exact reply>"
 # Prints the agent's reply and the seconds the turn took.
 set -u
@@ -15,7 +15,9 @@ else
   prompt=$(awk -v h="## $1" '$0==h{f=1;next} /^## /{f=0} f' agent/HEARTBEAT.md)
   [ -n "$prompt" ] || { echo "no prompt '$1' in agent/HEARTBEAT.md"; exit 2; }
 fi
+turns=4; [ "$1" = grow ] && turns=8  # grow reads a task, thinks, then posts: more steps
 t0=$(date +%s.%N)
-openshell sandbox exec --name "$SANDBOX" -- hermes chat -Q --yolo -s cac-owner --max-turns 4 \
+openshell sandbox exec --name "$SANDBOX" -- hermes chat -Q --yolo -s cac-owner \
+  --max-turns "$turns" \
   -q "$prompt" </dev/null 2>&1 | grep -vE "Warning: Unknown|tirith|^$|^session_id"
 echo "[turn $(echo "$(date +%s.%N) - $t0" | bc | cut -c1-5) s]"

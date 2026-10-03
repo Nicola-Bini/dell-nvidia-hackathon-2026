@@ -8,7 +8,7 @@ set -eu
 export OPENSHELL_GATEWAY=nemoclaw
 os() { openshell "$@" </dev/null; }
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
-mkdir -p "$tmp/agent"; cp -r agent/cac_owner.py agent/plans agent/INSTRUCTIONS.md "$tmp/agent/"
+mkdir -p "$tmp/agent"; cp -r agent/cac_owner.py agent/cac_grow.py agent/plans agent/INSTRUCTIONS.md "$tmp/agent/"
 printf 'OWNER_BASE_URL=http://host.openshell.internal:%s\nOWNER_TOOLS_TOKEN=%s\n' \
   "$OWNER_PORT" "${OWNER_TOOLS_TOKEN:?set in .env}" >"$tmp/agent/agent.env"
 os sandbox upload "$SANDBOX" "$tmp/agent" /sandbox/ >/dev/null

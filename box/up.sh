@@ -48,5 +48,14 @@ if [ -d services/mcp ] && command -v npm >/dev/null; then
   step mcp "http://127.0.0.1:$MCP_PORT/health" 30 "${mcp_cmd[@]}" \
     || echo "WARN mcp not up (see $LOGDIR/mcp.log); Flow 2 only"
 fi
+# The agent's standing loop (move 3, grow the graph). Never fails the start: it needs the
+# sandbox, which only a person can onboard. CAC_AGENT_LOOP=0 keeps it off.
+if [ "${CAC_AGENT_LOOP:-1}" = 1 ] && [ -n "$SANDBOX" ]; then
+  if pgrep -f box/agent_loop.sh >/dev/null; then echo "OK   agent loop (already up)"
+  else
+    setsid nohup box/agent_loop.sh >"$LOGDIR/agent_loop.log" 2>&1 </dev/null &
+    echo "OK   agent loop (log: $LOGDIR/agent_loop.log)"
+  fi
+else echo "SKIP agent loop (no sandbox, or CAC_AGENT_LOOP=0)"; fi
 [ $rc -eq 0 ] && echo "ALL UP"
 exit $rc

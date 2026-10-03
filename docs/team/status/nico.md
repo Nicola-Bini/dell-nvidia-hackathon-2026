@@ -11,6 +11,7 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 | wp5 | partial: egress and recovery proven; 5-minute heartbeat not scheduled | [#27](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/27) | `box/egress_demo.sh` -> 7 PASS (16:10 ET): `/owner/**` allowed; `/openapi.json` on the same port, example.com, github.com, the database, the Serve API and the model server all refused. `box/recover.sh` after killing the Owner API, Serve API and llama-server -> ALL UP in 24 s |
 | wp6 | partial: deployed, load-tested | [#23](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/23), [#28](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/28) | `box/up.sh` -> ALL UP; `uv run bench/load_test.py -n 24` -> table below, 0 errors at 4 concurrent. Agent-turn-in-flight row missing (needs the sandbox) |
 | wp7 (P1) | partial: server built and proven on a laptop, text-only; not on the box, no element, no tunnel | [#30](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/30) | `cd services/mcp && npm test` -> 10 pass, `npm run typecheck` clean. Live against the real Serve API on a laptop (16:30 ET): `request_booking` -> lead stored with channel `mcp`; `MCP_BASE_URL=... scripts/canary.py` -> 40 prompts, 89 responses, canary and goals in none. From Claude: not run (needs the tunnel and the connector, a person) |
+| wp8 (owner's ask, 16:30) | built and proven on a laptop; not yet run by the model on the box | [#31](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/31) | `python3 -m unittest discover -s agent/tests -p test_grow.py` -> 10 OK (fake API, a bike-shop graph). Against je's real Owner API code (its pytest harness, embedded Postgres): `next-task` returns a `classify` packet without locked labels; `apply` with one change of each kind (`create_edge`, `create_label`, `create_node`, `create_edge_type`, `add_prop`, a ListCard and a FormCard `create_component`) -> 0 refused; a repeat is skipped |
 
 ## Still missing (16:35 ET)
 
@@ -91,7 +92,37 @@ Box: Dell GB10, aarch64, 121 GB unified memory (about 89 GB available with qwen3
   Same test on Ollama before the switch: 9 of 24 busy at 1 concurrent, 17 of 24 at 4.
   `/v1/metrics` after the intents run: p50 12 ms, p95 516 ms, cache hit rate 0.71.
 
+7. **wp8: one `grow` turn by the sandboxed model.** Everything around the model is proven;
+   whether qwen3.6 writes a valid change list from a task packet is not. Waits on 1. Then:
+   `box/agent_install.sh && box/agent_turn.sh grow` (expect a `summary` line), and
+   `box/up.sh` starts `box/agent_loop.sh`, one `grow` turn every 5 minutes.
+
 ## Decisions
+
+- **Move 3, grow the graph** (owner's ask at 16:30: the agent only ran one hardcoded
+  gift-card plan and never read the graph). `cac_owner.py next-task` picks one task per
+  heartbeat from the live schema, graph and topics, in rotation classify, topics, classify,
+  invent: `classify` hands the model 8 nodes of one type with every small type as tags and
+  the edge types as seen in the graph; `topics` hands it the most-asked unanswered topic
+  nothing was built for; `invent` hands it the types no element shows and what was already
+  proposed. The model writes a JSON list of changes; `cac_owner.py apply` orders them
+  (types before nodes before edges), drops anything the agent ever proposed (rejected
+  included), adds the evidence and posts them. Same lesson as the 79 s free-form turn: code
+  chooses and checks, the model only judges. No business, type or topic is named anywhere
+  in `agent/cac_grow.py` or the `grow` prompt (a test asserts it).
+- A full owner inbox (more than 6 pending changes) holds back `topics` and `invent`;
+  `classify` keeps going because its tags are auto tier in `balanced`.
+- `ask-top-gap` now also skips a topic the agent already built something for, not only
+  topics a file in `plans/` covers. The gift-card plan and moves 1 and 2 are unchanged.
+- `/owner/graph/search` returns 25 nodes with no offset, so `nodes_of` splits a full page by
+  id prefix (`mi_a`, `mi_b`, ...) until pages come back short. Request filed to je for
+  `limit` and `after`; the split goes when that lands.
+- `box/agent_loop.sh` runs `grow` every `HEARTBEAT_SECONDS` (300); `box/up.sh` starts it when
+  a sandbox exists (`CAC_AGENT_LOOP=0` keeps it off). `move1` is not in the loop by default:
+  it marks a gap `asked`, which is only right once Telegram delivers the question.
+  **Risk for the demo:** every auto-tier change publishes and pre-warms (je's API replays
+  the top intents through the model). If visitor latency suffers, set `CAC_AGENT_LOOP=0` or
+  raise `HEARTBEAT_SECONDS`.
 
 - wp7 was written before the 18:30 gate, on Blake's laptop (16:30 ET), because items 1 to 5
   above all wait on the sandbox and on Nico at the box, and nothing else in the lane could
