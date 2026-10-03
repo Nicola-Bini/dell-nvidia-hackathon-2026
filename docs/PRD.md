@@ -3,11 +3,16 @@
 | | |
 |---|---|
 | Working title | CAC: Chats, Agents, Context |
-| Event | Dell x NVIDIA AI Hackathon, Boston, 3–4 October 2026 |
+| Event | Dell x NVIDIA AI Hackathon, Boston, Saturday 3 October 2026 |
 | Challenge | "Ship an always-on AI agent running fully local on the Dell Pro Max with GB10" |
-| Status | Draft v1, written 3 October 2026 from the whiteboard session and verified web research |
-| Companion | [SCHEMA.md](SCHEMA.md): database, catalog, and wire contracts for scaffolding |
+| Status | Version 2, 3 October 2026. Revised after four independent reviews (SQL run in a test database, fact check, build feasibility, fidelity to the team's discussion) |
+| Companion | [SCHEMA.md](SCHEMA.md): runtime, database, catalog, and wire contracts for scaffolding |
 | Research | [research/](research/README.md): the six fact-checked research reports behind this document |
+
+> **Deadline.** The event page's timestamps are 14:00 UTC on 3 October to 02:00 UTC on
+> 4 October, which is 10:00 AM to 10:00 PM Eastern. A second listing says 9:00 AM to 9:00 PM,
+> the schedule the other cities used. No listing shows 2 PM to 2 AM local. **Work to a 9:00 PM
+> Eastern submission deadline until an organizer says otherwise.**
 
 ## 1. Summary
 
@@ -16,254 +21,356 @@ a knowledge graph, then serves that knowledge two ways from one box:
 
 1. **To people on the website.** A visitor types what they want. The agent answers with
    owner-approved interface elements (a filtered menu, a booking form, a catering quote form)
-   instead of a wall of chat text. Clicks follow fixed paths with no model call.
+   instead of chat text. Clicks follow fixed paths with no model call.
 2. **To AI assistants acting for customers.** Claude or ChatGPT asks the restaurant's agent
-   directly and gets the same governed answer, including an interactive component.
+   and gets the same governed answer, including an interactive element.
 
-Behind both, an always-on agent keeps the graph current, notices what customers ask that the
-business cannot answer, and asks the owner. Private data never crosses to the public side,
-because the serving processes have no database access to it.
+Behind both, an always-on agent notices what customers ask that the business cannot answer,
+asks the owner, and publishes the owner's answer. Private data cannot cross to the public
+side, because the serving process has no database permission to read it.
 
-The name is the pitch: WIMP (windows, icons, menus, pointers) made the business guess what
-visitors want. CAC (chats, agents, context) lets the visitor say it. It also lowers the other
-CAC, customer acquisition cost, by steering every answer toward the owner's goals.
+The name: WIMP (windows, icons, menus, pointers) made the business guess what visitors want.
+CAC (chats, agents, context) lets the visitor say it. It is also aimed at the other CAC,
+customer acquisition cost: every answer leans toward an owner goal such as a booking or a
+catering lead. We have no conversion data yet.
 
-### Three changes from the whiteboard, forced by research
+### Changes from the whiteboard, and why
 
-| Whiteboard plan | What research found | Decision |
+| Whiteboard plan | What we found | Decision |
 |---|---|---|
-| Claude visits the site and is redirected to an A2A endpoint | No consumer assistant speaks A2A to arbitrary sites. Claude's web fetch cannot call URLs it composes and cannot POST. Claude and ChatGPT do render MCP Apps from a connected MCP server. | Flow 2 is an MCP server with an MCP Apps component, added to Claude as a custom connector. A2A agent card is a secondary adapter. |
-| The local LLM builds the UI | Free-form UI generation is a frontier-model capability. Small models are reliable when constrained to pick a named component and ids. | The model returns a component name plus node ids under a JSON-schema constraint. Code fills in every fact. |
-| Every request goes through the NemoClaw agent | Agent loops are slow and prefill-heavy; NVIDIA's own tutorial quotes 30–90 s per response with the 120B model. NemoClaw's gateway is not designed to face anonymous visitors. | The visitor path is a thin local service calling the same local model directly. NemoClaw runs the always-on agents: graph upkeep, gap detection, owner conversation. |
+| Claude visits the site and is redirected to an A2A endpoint | No consumer assistant speaks A2A to arbitrary sites. Claude's web fetch cannot call URLs it composes and cannot POST. Claude and ChatGPT do render MCP Apps from a connected MCP server | Flow 2 is an MCP server with an MCP Apps element, added to Claude as a custom connector. An A2A agent card is a later adapter |
+| The local LLM builds the UI | Google's paper reports 29–60% output errors for its older small models on one prompt set and generation times of a minute or more. Constrained decoding guarantees valid JSON, not a correct choice | The model chooses an element and ids from a list under a JSON-schema constraint. Code writes every word and number |
+| Every request goes through the NemoClaw agent | NVIDIA's tutorial quotes 30–90 s per agent response with the 120B model, and NemoClaw's gateway is built for one trusted operator, not anonymous visitors | Visitors get one constrained completion from the same local model. The NemoClaw agent does the always-on work. This is also a security decision: anonymous text never drives an agent that holds tools |
+| Three sub-agents: graph, visitor-facing, assistant-facing | An agent loop per request is too slow, and NemoClaw does not host public listeners | One NemoClaw agent for the graph and the owner. The visitor-facing and assistant-facing roles are plain services using the same local model. Splitting the agent in two (Gardener, Liaison) is P1 |
+| The LLM creates new elements; the owner approves | An element is a prebuilt React component, so a brand-new one needs code | P1: the agent proposes a new element as configuration over a generic form element (`FormCard`), which needs no code |
+| Elements are A2UI | Shipping an A2UI renderer in the widget and the MCP App is work with no demo payoff | Our own catalog JSON using A2UI's vocabulary (catalog, surface, action) |
+| The local LLM classifies dishes itself | A wrong diet or allergen tag is a safety problem | The model may draft a tag. A badge shows only after the owner confirms it |
+| "Only desserts" refinement, cart checkout, microphone | Time | Refinement and cart checkout are P1. Voice is P2. The know-versus-order distinction stays in P0 |
 
-## 2. Hackathon constraints
+## 2. Glossary
+
+| Term | Meaning |
+|---|---|
+| Element, component | A prebuilt, owner-approved piece of interface (menu list, booking form). The whiteboard said "element"; the schema says "component". Same thing |
+| Catalog | The owner-approved set of components the model may choose from |
+| Surface | One response: a sentence plus up to two chosen components and up to two inserted by code |
+| Selection | The model's output: a component name and ids from a list it was given |
+| Binder | Code that checks a selection and fills it with graph data |
+| Preset | A fixed surface for a nav button or call to action, served with no model call |
+| Slot | A value code pulls from typed text before the model runs: date, time, party size |
+| Publish | The step that copies approved public data to the store the serving side can read |
+| Steer | A per-component weight derived from the owner's private goals |
+| Gap | A question the graph could not answer |
+| Canary | A fake private record with a unique name, used to prove nothing private leaks |
+| OpenClaw | The always-on agent framework the challenge requires |
+| OpenShell | The sandbox OpenClaw agents run in; it enforces a network allowlist |
+| NemoClaw | NVIDIA's package that installs OpenClaw inside OpenShell with a managed local model server |
+| Heartbeat | The timer that wakes an always-on agent |
+| MCP, connector | The protocol Claude and ChatGPT use to call external tools. A connector is an MCP server a user has added |
+| MCP Apps | The MCP extension that lets a tool return an interactive component, rendered by Claude and ChatGPT |
+| A2UI | Google's open spec for agent-requested UI from a client-side catalog (v0.9.1; v1.0 candidate) |
+| A2A | Agent-to-agent protocol (1.0). Used between enterprise agents, not by consumer assistants today |
+| Tunnel | An outbound connection that gives the box's MCP server a public HTTPS address |
+
+## 3. Hackathon constraints
 
 | Fact | Source and confidence |
 |---|---|
-| Runs 3–4 October, listed as 2:00 PM to 2:00 AM | Event page. One researcher read the listing as UTC, which would be 10 AM to 10 PM Eastern. **Confirm the submission deadline with organizers.** |
-| Must run fully local on the Dell Pro Max with GB10; first prize is the box | Event page |
-| Required stack is OpenClaw + NVIDIA NemoClaw + OpenShell; demo on the provided box; submit through BuilderBase; top 8 pitch live | Pages for the other cities in this series (SF, Seattle, NYC, Cornell). Not stated on the Boston page. |
-| Judging 25% pitch, 25% local, 25% business value, 25% technical | The team's understanding. Not published anywhere we could find. |
+| Runs Saturday 3 October, most likely 10 AM to 9 or 10 PM Eastern (see the deadline note above) | Event page timestamps; series pages |
+| Agent must run fully local on the Dell Pro Max with GB10; first prize is the box | Event page |
+| Required stack is OpenClaw + NVIDIA NemoClaw + OpenShell; "an AI agent that runs locally on the box (no cloud API)"; demo on the provided box; submit through BuilderBase; top 8 pitch live | Pages for other cities in the series. Not stated on the Boston page |
+| Judging 25% pitch, 25% local, 25% business value, 25% technical | The team's understanding. Not published anywhere we could find |
 | "A real business or corporate workflow, not a toy demo" | Cornell page for the same series |
 | Venue Wi-Fi is not enough for model downloads | NYC page for the same series |
 
 Hardware: GB10 Grace Blackwell, 128 GB unified memory, DGX OS 7. NemoClaw is alpha software
-(v0.0.130 on 1 October 2026) and installs by script; it is not part of DGX OS.
+(v0.0.130 on 1 October 2026), installs by script, and does not restart on its own after a
+reboot.
 
-## 3. Problem
+## 4. Problem
 
 **For the owner.** A restaurant's knowledge lives in a site built for browsing: a PDF menu,
-an hours table, a contact form. The owner pays platforms to reach customers (Owner.com is
-$249/month plus 5% per order or $499/month flat; DoorDash takes 15–30% on delivery) and the
-platform, not the owner, holds the customer relationship.
+an hours table, a contact form. The owner pays platforms to reach customers: Owner.com is
+$249/month plus 5% per order or $499/month flat, with a further 5% fee charged to guests on
+both plans; DoorDash takes 15–30% on delivery.
 
 **For the visitor.** The site makes them hunt. "Which dishes are vegetarian?", "are you open
 on the 4th?", and "do you cater for 40?" each mean scanning pages or calling.
 
 **For AI assistants.** 45% of US consumers used generative AI for local business
 recommendations in 2026, up from 6% in 2025 (BrightLocal, n=1,002). Assistants read sites
-badly: major AI crawlers do not run JavaScript, and a study of 200 Amsterdam restaurants found
-only 16 could be taken to the final booking step by a browser agent, with none of 163 working
-sites exposing an interface an assistant could call. Restaurant brands show up in Google's local
-3-pack 24.3% of the time but in ChatGPT recommendations 5.3% (SOCi; multi-location brands).
+badly: in a December 2024 Vercel/MERJ study, OpenAI's, Anthropic's and Perplexity's crawlers
+fetched JavaScript but did not run it, and Claude's web fetch does not render JavaScript. A
+developer's August 2026 test of 200 Amsterdam restaurants (published by the author of a
+booking MCP server) found 16 could be taken to the final booking step by a browser agent, and
+none of 163 working sites exposed an interface an assistant could call.
 
-**The gap in current answers.** Square, Toast, OpenTable, Resy and Yelp already put restaurants
-inside ChatGPT, Claude and Google Maps. In each case the restaurant is a row in the platform's
-catalog and the platform owns ranking and the guest. Nobody we found gives the owner their own
-agent, on their own hardware, answering both people and assistants from one governed source.
+**The gap in current answers.** Square, Toast, OpenTable, Resy and Yelp already put
+restaurants inside ChatGPT, Claude and Google Maps. In each case the restaurant is a row in
+the platform's catalog, and the platform or the assistant decides what is shown. On the
+booking aggregators the platform also owns ranking and the guest. We found nobody giving the
+owner their own agent, on their own hardware, answering both people and assistants from one
+governed source.
 
-## 4. Product principles
+## 5. Product principles
 
 1. **The owner owns the agent.** The box, the graph, the goals, and the approved interface
    belong to the business.
 2. **One graph, two audiences.** People and assistants get the same facts from the same place.
-3. **Typed intent goes to the model; clicks never do.** Buttons, forms, carts, and navigation
-   are fixed paths.
-4. **The model picks, code fills.** The model chooses a component and node ids. Prices, hours,
-   and diet badges come from the graph.
-5. **Private by structure.** Serving code cannot read private data. This is a database
-   permission, not an instruction in a prompt.
-6. **Every answer leans toward an owner goal**, and never at the cost of answering the question.
-7. **Keep the existing site.** CAC is an added panel. Owners keep editing their site the way
-   they already do.
+3. **Typed intent goes to the model; clicks do not.** Buttons, forms, and navigation are fixed
+   paths. Suggested chips submit their text as an intent and are pre-warmed in the cache.
+4. **The model chooses, code writes.** The model picks a component and ids. Every word, price,
+   hour, and badge a visitor sees comes from the graph or a template.
+5. **Private by structure.** The serving process cannot read private data. This is a database
+   permission, not a prompt instruction.
+6. **Anonymous text never drives an agent that holds tools.** Visitors get a tool-less
+   completion. The agent that can write to the graph sees only a topic and a count, and can
+   only write the owner's own words.
+7. **Every answer leans toward an owner goal**, and never at the cost of answering the
+   question.
+8. **Keep the existing site.** CAC is an added panel. If the box is unreachable, the site
+   behaves exactly as before.
 
-## 5. Users
+## 6. Users
 
 | User | Wants | CAC gives them |
 |---|---|---|
 | Owner | More bookings and catering leads, less platform dependence, no new dashboard to learn | An agent that reads their site, asks them only what it cannot find, and steers toward their goals |
 | Site visitor | A fast answer and the next step | An intent box that returns the right element, with the nav bar still there |
-| Customer's AI assistant | Structured, trustworthy facts and an action it can take | A tool endpoint with verified data and a booking request flow |
+| Customer's AI assistant | Facts it can trust and an action it can take | Tools that return owner-confirmed data and a booking request |
 
-## 6. Scope
+## 7. Scope
 
 **P0: must work in the demo**
 
-- Knowledge graph for one demo restaurant, ingested from its site, with public/private
-  partition and a publish step.
-- Flow 1: website panel with intent box, component rendering, deterministic actions, navigation
-  presets, exact-match cache.
-- Flow 3: always-on NemoClaw agent that turns unanswered questions into a question for the
-  owner, records the owner's answer as verified, and republishes.
-- Privacy proof: canary leak test and a blocked egress attempt shown live.
-- Live metrics: latency, cache hits, in-flight requests, "cloud calls: 0".
+- One fictional demo restaurant. A single seed file drives both the graph and the static demo
+  site.
+- Graph with public/private partition, publish step, and allowlisted props.
+- Flow 1: website panel with intent box; components `Answer`, `MenuList`, `HoursCard`,
+  `BookingForm`, `CateringQuoteForm`, plus `AllergenNotice` and `GoalCTA` inserted by code;
+  presets for nav; forms that store leads; "Add" buttons with a cart count when the visitor
+  wants to order; exact cache; cache pre-warm after each publish.
+- Flow 3: one NemoClaw agent that puts an unanswered question to the owner, records the
+  owner's reply, and publishes it.
+- Owner inbox: one read-only page listing new leads and open gaps.
+- Privacy proof: permission-denied queries shown live, canary script, blocked egress.
+- Live overlay: latency, cache hits, model calls in flight, model host, leads captured.
 
-**P1: build in parallel, cut if blocked**
+**P1: only after the P0 gates pass**
 
-- Flow 2: MCP server plus MCP Apps component in Claude via custom connector.
-- Refinement ("only desserts") against the current surface.
-- Semantic cache and cache pre-warming by the agent.
-- Cart and pickup order as a lead (no payment).
-- Review highlights component.
+- Flow 2: MCP server with the MCP Apps element in Claude.
+- Ingesting the demo site's JSON-LD (instead of the seed) as the onboarding proof.
+- Refinement ("only desserts"). Cart review and pickup order as a lead. `LocationCard`,
+  `ItemCard`, `ReviewHighlights`. History rail. Slot-masked and semantic cache.
+- Agent split into Gardener and Liaison. Agent-proposed `FormCard` elements. Owner verifying
+  diet tags in a batch. Owner-initiated facts. Onboarding interview.
 
-**P2: mention as roadmap**
+**P2: say as roadmap**
 
-- A2A agent card and OpenClaw's A2A channel. Agent-proposed new components with owner approval.
-  Voice input. Onboarding a real site live. WebMCP tool registration. UCP profile for ordering.
-  Multi-box clustering.
+- LLM extraction from page text, PDF and image menus. A2A agent card. Voice. WebMCP tools.
+  UCP profile once the food vertical ships. Multi-box clustering.
 
 **Non-goals**
 
-- Payments. Rebuilding the owner's site. An owner dashboard. Multi-tenant hosting. Any cloud
-  model call from the business side. Confirmed reservations (we create requests).
+- Payments. Rebuilding the owner's site. An owner dashboard beyond the read-only inbox.
+  Multi-tenant hosting in v0. Any cloud model call from the business side. Confirmed
+  reservations (we create requests).
 
-## 7. Experience
+## 8. Experience
 
 ### Flow 0: Onboarding
 
 1. The owner gives the site URL.
-2. Ingestion reads structured data first (schema.org JSON-LD), then page text, then PDF and
-   image menus, and extracts typed nodes with provenance.
-3. Extracted nodes are drafts. Facts taken from the owner's own public site are marked public
-   and approved in bulk; diet and allergen claims stay unverified until the owner confirms.
-4. The owner states goals in plain words ("more weeknight bookings", "sign up catering
-   clients"). These become private Goal nodes.
-5. Publish. The owner adds one script tag to the site.
+2. Ingestion parses structured data (schema.org JSON-LD) in code. Typed fields parsed by code
+   (names, prices, hours, address) are approved in bulk when the owner says "publish".
+3. Anything a model read from page text, a PDF, or an image stays a draft until the owner
+   approves it. Diet and allergen tags stay unverified until the owner confirms them.
+4. A completeness check lists what is missing (holiday hours, parking, catering minimum, diet
+   tags). Each becomes a gap the agent asks the owner about.
+5. The owner states goals ("more weeknight bookings", "sign up catering clients"). They become
+   private Goal nodes.
+6. Publish. The owner adds one script tag to the site.
 
-Acceptance: from a clean database, one command ingests the demo site and publishes a graph
-with at least 30 menu items, hours, location, two services, and two goals.
+In the hackathon build, steps 1 to 5 are replaced by loading the seed file; JSON-LD ingest is
+P1 and the rest is roadmap.
+
+Acceptance (P0): one command loads the seed and publishes a graph with at least 20 menu items,
+hours, two special-hours dates, two services, and two private goals that appear on the public
+side only as `steer` weights on two components.
 
 ### Flow 1: Visitor on the website
 
-Layout (from the wireframe): the existing header and nav stay. The panel has a history rail on
-the left (earlier intents as chips), the current surface in the centre, and the intent box with
-suggested chips at the bottom.
+Layout (from the wireframe): the existing header and nav stay. The panel has the current
+surface in the centre and the intent box with suggested chips at the bottom. A history rail on
+the left (earlier answers as chips, kept in the browser) is P1. Each typed intent is
+independent in P0.
 
 | Visitor does | Result | Model call |
 |---|---|---|
-| Types "vegetarian options" | `MenuList` of vegetarian dishes with verified badges, no cart button (they want to know, not order), allergy notice, "Book a table" CTA | yes, once; cached after |
-| Types "I want to order pickup, vegetarian" | Same list with "Add" buttons | yes |
-| Types "only desserts" | Current list filtered to desserts | yes (P1) |
-| Types "are you open on the 4th of July?" | `HoursCard` with the answer computed from hours data, plus booking CTA | yes, to route; the answer is code |
-| Types "do you cater?" | `CateringQuoteForm` asking headcount and date | yes |
-| Types "do you have gluten-free pasta?" (unknown) | "We haven't confirmed that yet, please ask staff", contact option; logged as a gap | yes |
-| Clicks nav "Menu" | Preset menu surface | no |
-| Clicks "Add", "Book a table", submits a form | Cart update, preset form, lead stored | no |
-| Asks the same thing a second time, or a second visitor asks | Instant answer | no (cache) |
+| Types "vegetarian options" | Menu list titled "Vegetarian". Owner-confirmed dishes carry a badge; unconfirmed ones say "not verified, ask staff". No "Add" buttons (they want to know, not order). Allergy notice. "Book a table" button | once; cached after |
+| Types "I want to pick up something vegetarian" | The same list with "Add" buttons; adding updates a cart count | once |
+| Types "are you open on the 4th of July?" | Hours card with the answer computed from hours data ("Closed on Sunday 4 July 2027"), plus a "Book a table" button | once, to route; the answer is code |
+| Types "do you cater for 40?" | Catering quote form with 40 filled in. No booking button, because this surface already serves a goal | once |
+| Types "do you have gluten-free pasta?" (nothing confirmed) | "We haven't confirmed that yet. Please ask our staff." with the phone link. Logged as a gap | once |
+| Types "I'm allergic to peanuts" | A fixed caution and only the dishes confirmed to contain peanuts. Never a list of "safe" dishes | once |
+| Types something off topic | "I can help with our menu, hours, bookings and catering." | once |
+| Clicks nav "Menu", a chip's preset, "Book a table", "Add" | Preset surface or cart count | none |
+| Submits a form | Lead stored; confirmation shown | none |
+| Asks something already asked | Instant answer | none (cache) |
 
 Acceptance:
 
-- Uncached typed intent returns in under 2.5 s at median on the box; cached in under 200 ms;
-  click actions in under 100 ms.
-- Every rendered price, hour, and badge matches the graph.
-- An unverified diet or allergen claim is never shown as fact.
+- Uncached typed intent returns in under 2.5 s at median with one request in flight on the
+  box; cached in under 200 ms; clicks in under 100 ms. Replace these targets with measured
+  numbers after the first-hour benchmark.
+- 30 fixture intents: 100% schema-valid, at least 27 routed to the right component.
+- An unverified diet claim is never shown as fact. An allergen question never yields a list of
+  safe dishes.
 - The same question asked twice produces one model call.
+- If the model times out or the queue is full, the visitor gets the menu preset with a "we're
+  busy" note. No cloud model is ever called.
 
-### Flow 2: A customer's assistant
+### Flow 2: A customer's assistant (P1)
 
-1. The customer has the restaurant's connector in Claude. They ask: "Dinner tonight in
-   Cambridge. One friend is vegetarian, one loves meat."
-2. Claude calls `ask_restaurant`. The MCP server on the box runs the same intent pipeline over
-   the public graph.
-3. Claude receives text built from graph facts, plus the surface, and renders the restaurant's
-   own component inline.
-4. The customer taps "Request a table". The component calls `request_booking` directly. The
-   lead lands on the box.
+1. The customer has added the restaurant's connector in Claude and switched it on in the chat.
+   They ask: "Ask <restaurant name> whether it works for dinner tonight. One of us is
+   vegetarian, one loves meat."
+2. Claude calls `ask_restaurant`. The MCP server on the box runs the same pipeline over the
+   public graph.
+3. Claude receives text built from graph facts and renders the restaurant's own element
+   inline.
+4. The customer taps "Request a table". The element calls `request_booking`. The lead appears
+   in the owner inbox on the box.
 
-What is true today, to say plainly to judges: the customer adds the connector once. No
-assistant discovers a business's agent from its URL on its own yet. MCP and MCP Apps are the
-standards; the graph, the partition, and the component selection are ours.
+What is true today, to say plainly: the customer adds the connector by URL once (Claude:
+Customize > Connectors, one custom connector on the Free plan; ChatGPT: Developer mode). That
+is more steps than a directory app. No assistant discovers a business's agent from its URL on
+its own. MCP and MCP Apps are the standards; the graph, the partition, and the selection are
+ours.
 
-Acceptance: from Claude, a question returns a rendered component with correct data; a booking
-request creates a lead; asking for customer names returns nothing private.
+Acceptance: from Claude, the question returns a rendered element with correct data; a booking
+request creates a lead; asking for customer names returns nothing private. Tested with Claude's
+web search both on and off, with "Always allow" already clicked.
 
 ### Flow 3: The always-on loop
 
-1. On a heartbeat, the Gardener agent reads new intents, groups unanswered ones, and drafts
-   proposals (a missing FAQ, a diet tag, a likely new component).
-2. The Liaison agent messages the owner: "Six visitors asked about gluten-free pasta this
-   week. I have nothing verified. What should I tell them?"
-3. The owner replies in plain words. The agent writes an owner-verified node, publishes, and
-   pre-warms the cache for that question.
-4. The next visitor gets the answer.
+1. Visitors ask something the graph cannot answer. Each is logged with a short topic.
+2. On its heartbeat the agent asks the Owner tools API for open gaps. It gets a topic and a
+   count, never visitor text.
+3. The agent asks the owner on the owner channel: "5 visitors asked about gluten-free pasta.
+   I have nothing confirmed. What should I tell them?"
+4. The owner replies in plain words. The agent turns the reply into the right typed update: an
+   FAQ answer in the owner's exact words, or a special-hours entry ("we're closed on the
+   24th"). It publishes.
+5. Publishing pre-warms the cache. The next visitor gets the answer, marked "Confirmed by the
+   restaurant".
+6. The same heartbeat sends the owner a digest: questions today, top topics, new leads by
+   kind. Lead details stay in the owner inbox on the box.
 
-Acceptance: an unanswered question at minute 0 is answered correctly for the next visitor
-after one owner reply, with no code change and no restart.
+Heartbeat: OpenClaw's default is 30 minutes. Set it to 5 minutes, and for the demo send the
+agent a "check gaps now" message.
 
-## 8. Functional requirements
+Acceptance: an unanswered question is answered correctly for the next visitor after one owner
+reply, with no code change and no restart. The owner is asked within one heartbeat of a gap
+crossing the ask threshold; the answer is live within one agent turn of the reply (measure
+that turn in the first 30 minutes and write the number here).
+
+## 9. Functional requirements
 
 | ID | Requirement | Priority |
 |---|---|---|
-| G1 | Ingest a site into typed nodes and edges with source, extractor, and verification status | P0 |
-| G2 | Label registry marks which node types may ever be public | P0 |
-| G3 | `publish()` copies only approved public nodes into the serving store and bumps a graph version | P0 |
+| G1 | Load seed data into typed nodes and edges with source and verification status | P0 |
+| G2 | Label registry marks which labels and which props may be published | P0 |
+| G3 | `publish()` copies approved public nodes with allowlisted props, bumps the graph version, clears stale cache | P0 |
 | G4 | Retrieval is vector entry plus fixed expansion; the model never writes a query | P0 |
-| G5 | Diet and allergen facts render only when owner-verified; otherwise "not verified, ask staff" | P0 |
+| G5 | Diet badges only for owner-verified edges; allergen questions never produce a safe list | P0 |
+| G6 | Ingest JSON-LD from the demo site; caps on name and description length; URLs and control characters stripped | P1 |
 | S1 | `POST /v1/intent` returns a surface built from approved components | P0 |
-| S2 | Model output is constrained to approved components and retrieved node ids, then validated | P0 |
-| S3 | `GET /v1/view/{preset}` and `POST /v1/action` never call the model | P0 |
-| S4 | Exact cache keyed on normalized text, slots, and graph version | P0 |
-| S5 | Semantic cache requiring identical slots (date, number, negation) | P1 |
-| S6 | Binder appends an allergy notice and at most one goal CTA | P0 |
-| S7 | When the queue is full, serve the nearest cached surface or a preset; never call a cloud model | P1 |
-| W1 | One script tag adds the panel as a sandboxed iframe on the existing site | P0 |
-| W2 | Six P0 components render from surface JSON | P0 |
-| W3 | History rail and suggested-intent chips | P0 |
-| W4 | Theme from BrandTrait nodes (colours, tone) | P1 |
-| A1 | Gardener agent runs on a heartbeat and writes drafts and gaps only | P0 |
-| A2 | Liaison agent asks the owner and records verified answers | P0 |
-| A3 | Agents run inside the NemoClaw sandbox with default-deny egress | P0 |
-| A4 | Agents pre-warm the cache with the most common intents | P1 |
-| A5 | Agents propose new components for owner approval | P2 |
-| X1 | MCP server exposes profile, ask, booking request, catering quote | P1 |
-| X2 | `ask_restaurant` returns an MCP Apps component built from the same bundle as the widget | P1 |
-| X3 | A2A agent card with the same skills | P2 |
-| O1 | `/v1/metrics` and an on-screen overlay for latency, cache, in-flight, graph version | P0 |
-| O2 | Canary leak test runs against every public endpoint | P0 |
-| O3 | Load test script reports p50 and p95 at 1, 4, and 8 concurrent intents | P0 |
+| S2 | Model output constrained to approved components and retrieved ids; the model writes no visitor-facing text | P0 |
+| S3 | Presets and actions never call the model | P0 |
+| S4 | Exact cache keyed on a hash of the normalized text, slots, and graph version | P0 |
+| S5 | Publish replays top and demo intents to pre-warm the cache | P0 |
+| S6 | Code inserts the allergy notice and at most one goal button | P0 |
+| S7 | Input limits, off-topic and gap surfaces, model timeout and in-flight cap with a preset fallback. No cloud client exists in the code | P0 |
+| S8 | Semantic cache; slot-masked cache; refinement | P1 |
+| W1 | One script tag adds the panel in a sandboxed iframe; a health check makes it a no-op if the box is down | P0 |
+| W2 | Five selectable components plus `AllergenNotice` and `GoalCTA` render from surface JSON | P0 |
+| W3 | Suggested chips from the catalog's fixed lists, never from visitor logs | P0 |
+| W4 | Existing nav links open presets | P0 |
+| W5 | History rail; theme from brand traits | P1 |
+| A1 | One NemoClaw agent on a heartbeat: list gaps, ask the owner, record the reply as an FAQ or special hours, publish | P0 |
+| A2 | The agent's tools cannot read visitor text or lead details, verify diet or allergen edges, or approve drafts | P0 |
+| A3 | The agent runs in the OpenShell sandbox with default-deny egress; the policy allows only the Owner tools API, the model endpoint, and the owner channel | P0 |
+| A4 | Heartbeat digest to the owner | P0 |
+| A5 | Agent proposes `FormCard` elements; owner approves | P1 |
+| A6 | Owner-initiated facts, batch diet verification, onboarding interview | P1 |
+| X1 | MCP server: profile, ask, view, booking request, catering quote | P1 |
+| X2 | `ask_restaurant` returns the widget bundle as an MCP Apps element | P1 |
+| X3 | A2A agent card | P2 |
+| O1 | Metrics endpoint and overlay: latency, cache hits, in flight, model host, leads captured, goal buttons shown and clicked | P0 |
+| O2 | Permission-denied check and canary script against every public endpoint | P0 |
+| O3 | Load test at 1, 4, and 8 concurrent intents, once with an agent turn in flight | P0 |
+| O4 | Read-only owner inbox page: new leads, open gaps | P0 |
 
-## 9. Privacy and safety
+## 10. Privacy and safety
 
 **Invariants**
 
-1. The serving role (`cac_serve`) has no grant on the private schema. A prompt injection that
-   fully controls the model still cannot read a customer record, because the process holding
-   the model's output has no path to that data.
-2. The model's output can only name node ids that were retrieved from the public store for
-   that request.
-3. Goals are private. The serving side sees a number (steer weight) per component, not the
-   goal text.
-4. Visitor text and leads are written to tables the serving role can insert into but not read.
-5. Card numbers, SSNs, and licence numbers are never stored anywhere in CAC.
+1. The serving role has no grant on the private schema. A prompt injection that fully controls
+   the model still cannot read a customer record: the process holding the model's output has
+   no path to that data.
+2. Publish copies only allowlisted props of approved public nodes. A private prop on a public
+   node is dropped.
+3. The model can only name ids that were retrieved from the public store for that request, and
+   it writes no text a visitor sees.
+4. Goals are private. The serving side sees a number per component, not the goal.
+5. Raw visitor text and leads go to tables the serving role can insert into but not read. The
+   cache holds a hash of the question, not the question.
+6. The agent never sees raw visitor text or lead details, and no agent can verify a diet or
+   allergen edge, approve a draft, or change visibility. It can record only the owner's own
+   words, only from the owner's identity on the owner channel.
+7. Card numbers, SSNs, and licence numbers are never stored anywhere in CAC.
+
+Of the four options on the whiteboard we use three together: a separate store (schema plus
+role), node classification (label registry with a prop allowlist), and owner approval at
+publish. "Elements limit data flow" is each component's `binds` field.
 
 **Why not rely on the sandbox for this.** NemoClaw sub-agents share one sandbox and its docs
-say file permissions do not isolate them from each other; NVIDIA also notes no sandbox fully
-stops prompt injection. The sandbox limits what agents can reach on the network. The database
-role limits what the public side can read. The demo shows both.
+say file permissions do not isolate them; NVIDIA also notes no sandbox fully stops prompt
+injection. The sandbox limits where the agent can connect. The database role limits what the
+public side can read. The tool list limits what the agent can write. The demo shows all three.
 
-**Food safety.** The FDA lists nine major allergens and sets no safe threshold; schema.org has
-no allergen property. So allergen and diet edges carry `verified_by_owner`. Unverified claims
-render as "not verified, please ask staff". The model never writes an allergen statement.
-Massachusetts requires menus to carry a notice asking customers to tell their server about
-allergies (105 CMR 590.011(C)(2)); the `AllergenNotice` component carries that text.
+**Residual risk.** The gap topic is a short model-written phrase derived from visitor text and
+reaches the agent. It is capped at 60 characters and wrapped in a code template, and the
+agent's tools cannot do harm beyond recording an owner reply. The P1 hardening is to echo the
+final text to the owner for a yes before publishing.
+
+**What leaves the box.** Nothing from Flow 1 or Flow 3 when the owner channel is the local
+OpenClaw dashboard, so both run with the network unplugged. If the owner chooses a messaging
+app, the aggregated question and their reply pass through it. In Flow 2, whatever a customer
+sends through their own assistant passes through that assistant's cloud and the tunnel.
+
+**Food safety.** The FDA lists nine major allergens and sets no safe threshold. schema.org's
+`MenuItem` has no allergen property, only `suitableForDiet` with 11 diet values and none for
+nut-free or dairy-free. So diet and allergen edges carry `verified_by_owner`, unverified
+claims render as "not verified, ask staff", and an allergen question returns a fixed caution
+with only the dishes confirmed to contain it. Massachusetts requires printed menus and menu
+boards to carry the notice "Before placing your order, please inform your server if a person
+in your party has a food allergy" (105 CMR 590.011(C)(2)); `AllergenNotice` uses the same
+wording. Whether the rule reaches a web panel was not determined.
 
 **Proof in the demo**
 
-- A fake customer with a unique name sits in the private graph. The test asks every endpoint,
-  including through Claude, to reveal it. It never appears.
-- The agent tries to reach a non-allowlisted host and OpenShell blocks it on screen.
+- As the serving role: `select * from kg.node` returns "permission denied for schema kg";
+  `select * from ops.lead` returns "permission denied for table lead". This was verified in a
+  test database with the DDL in SCHEMA.md.
+- The canary script: a fake customer with a unique name sits in a Customer node, a lead, and
+  the intent log. The script sends 40 prompts to every public endpoint and fails if the name
+  appears anywhere.
+- The agent tries to reach a host outside the OpenShell policy and is blocked on screen. The
+  policy file is shown: Owner tools API, model endpoint, owner channel.
 
-## 10. Architecture
+## 11. Architecture
 
 ```
   Visitor's browser                         Customer's assistant (Claude, ChatGPT)
@@ -271,7 +378,7 @@ allergies (105 CMR 590.011(C)(2)); the `AllergenNotice` component carries that t
           |                                              |
 ==========|================ LAN / tunnel ================|=========================
           v                                              v
-   Widget (React, iframe) ---> Serve API <------- MCP server (public tools)
+   Widget (React, iframe) ---> Serve API <------- MCP server (public tools, P1)
                                  |    |
                   role cac_serve |    +---> Local model server (vLLM), JSON-constrained
                                  v
@@ -279,256 +386,278 @@ allergies (105 CMR 590.011(C)(2)); the `AllergenNotice` component carries that t
                                                                    ^
                                                     role cac_owner |
    NemoClaw + OpenShell sandbox                                    |
-   OpenClaw agents: Gardener, Liaison  ----->  Owner tools API ----+
-          |                                    (localhost only)
-          +--- Telegram or local dashboard ---> Owner
+   OpenClaw agent  ---------------------->  Owner tools API -------+
+          |                                 (host only, token, not tunnelled)
+          +--- local dashboard (or a messaging app) ---> Owner
 
   Everything below the double line runs on the Dell Pro Max with GB10.
 ```
 
-| Component | Job | Notes |
-|---|---|---|
-| Widget | Intent box, renders surfaces, runs client actions | One React bundle, also built as a single HTML file for the MCP App |
-| Serve API | Intent pipeline, presets, actions, metrics | Python service; connects as `cac_serve` |
-| Model server | One constrained completion per uncached intent | vLLM with structured outputs; the same endpoint NemoClaw uses |
-| Embedder | Embeds nodes and intents | Small local model already on the box |
-| Postgres + pgvector | Graph, public projection, runtime tables | One container; schemas and roles in SCHEMA.md |
-| Owner tools API | Drafts, gaps, owner answers, publish | Localhost only; connects as `cac_owner` |
-| NemoClaw agents | Always-on upkeep and owner conversation | OpenClaw agents in an OpenShell sandbox, heartbeat-driven |
-| MCP server | Public tools for assistants | Separate process (NemoClaw does not host listeners); TypeScript, copied from Anthropic's quickstart versions |
-| Ingestion job | Site to drafts | Structured data first, then page text, then PDF and image menus |
+Processes, ports, and environment variables are in SCHEMA.md section 2.
 
 **Where NemoClaw is load-bearing.** The challenge is an always-on agent, and the series
-requires this stack. In CAC the agents are what make the product learn: without the Gardener
-and Liaison, the graph is a static export. The visitor path uses the same local model but skips
-the agent loop for speed. Ask a mentor early whether that split is acceptable (section 15).
+requires this stack. In CAC the agent is what makes the product learn: without it the graph is
+a static export. It does work a script cannot: it reads the owner's free-text reply and
+decides which typed update it is (an FAQ answer, a special-hours entry), then publishes.
+OpenShell is what lets us give that agent write tools safely: its policy allows three
+destinations and nothing else. Visitors do not go through the agent loop, by design (principle
+6) and for speed.
 
-**Model choice.** Use what is already on the box; do not download at the venue.
+**Plan B if organizers require every model call to pass through the agent.** Keep presets and
+cache hits direct. Send each cache miss as a message to an OpenClaw agent whose single tool is
+the selection function, accept the measured latency, and pre-warm the demo intents.
 
-| Use | Model class | Why |
-|---|---|---|
-| Visitor intents | 30–35B mixture-of-experts at NVFP4 on vLLM (NemoClaw's Spark default is `nvidia/Qwen3.6-35B-A3B-NVFP4`; a Nemotron 3.5 Lightning 30B profile exists, marked experimental) | Reliable structured output; thinking disabled; under 60 output tokens |
-| Ingestion and Gardener | Largest model that fits, run in the background | Extraction quality rises with model size and latency does not matter |
-| Embeddings | `qwen3-embedding:0.6b` or `bge-m3` via Ollama | Already supported locally; the graph is a few hundred nodes |
+**Model.** One model for everything: the 30–35B model already on the box behind NemoClaw's
+managed vLLM (the Spark default is `nvidia/Qwen3.6-35B-A3B-NVFP4`; a Nemotron 3.5 Lightning
+30B profile exists and is marked experimental). Do not download at the venue and do not load a
+second large model beside it. Thinking is disabled per request on the visitor path.
 
-**Capacity.** Output tokens are the latency budget, so the selection is kept tiny. Published
-single-stream speeds for this class on the GB10 range from 21 tokens/s (FP8) to about 97
-(NVFP4), which puts a 40–60 token selection at roughly 1–3 s. NemoClaw's managed vLLM defaults
-to 4 concurrent sequences; raise it to 8 or more. Our estimate, to be replaced by measurement:
-1–2 uncached intents per second per box. Clicks and cache hits cost nothing, so that supports
-hundreds of people browsing at once. When the queue is full, CAC serves the nearest cached
-surface or the preset; it does not call a cloud model. Beyond one box, DGX Spark systems
-cluster.
+**Embeddings.** Not confirmed on the box. Decide in the first 30 minutes, in this order:
+`bge-m3` or `qwen3-embedding:0.6b` if already present; any embedding model on disk; otherwise
+Postgres full-text search plus trigram matching behind the same retrieve function.
 
-**Hosting.** There is no cloud deployment. The only external pieces are the tunnel that lets
-assistants reach the MCP server and the owner's messaging channel.
+**Capacity.** Output tokens are the latency budget, so the selection is tiny (about 20–40
+tokens). Two blog benchmarks of this model class on the GB10 bracket single-stream decode at
+21 tokens/s (FP8) and 97 tokens/s (NVFP4; the higher figure is optimistic). At 8 concurrent,
+per-stream speed falls to about 42 tokens/s (NVFP4) or 10 (FP8). NemoClaw's managed vLLM
+defaults to 4 concurrent sequences; decide whether to raise it in the first 30 minutes, since
+changing it needs a model reload. Our estimate, to be replaced by the first-hour measurement:
+1–2 uncached intents per second. Clicks and cache hits make no model call.
 
-## 11. Data and schema
+**Hosting.** There is no cloud deployment. The only external piece is the tunnel that lets
+assistants reach the MCP server in Flow 2.
+
+## 12. Data and schema
 
 Full definitions are in [SCHEMA.md](SCHEMA.md). In short:
 
-- Typed nodes and edges in Postgres, each with visibility, status, provenance, and owner
+- Typed nodes and edges in Postgres, each with visibility, status, source, and owner
   verification.
-- Public: business, location, hours, menu, items, ingredients, diets, allergens, services,
-  FAQs, review summary, brand traits, UI components, intents, actions.
-- Never public: goals, knowledge gaps, proposals, customers, owner notes, leads, raw intent
-  log.
+- Public: business, location, hours, menu sections and items, diets, allergens, services,
+  FAQs, UI components.
+- Never public: goals, knowledge gaps, customers, leads, the raw intent log.
 - "Vegetarian" is a node, not a column. Items connect to it. Asking for vegetarian finds the
   node by vector search and follows its edges, which is the design from the whiteboard.
-- UI components and intents are also nodes, so retrieval returns both the data and the
-  component that should show it.
+- UI components are nodes too, connected to the goals they advance.
 
-## 12. Competition
+## 13. Competition
 
 Nobody we found combines the four pieces: a business-owned local agent, a public/private
 knowledge graph, owner-approved generative UI on the existing site, and an endpoint for
 external assistants. Each piece exists separately, almost always as cloud software. That is a
 finding from the sources checked, not proof that no one is building it.
 
-| Who | What they do | Gap against CAC |
-|---|---|---|
-| Square | ChatGPT app and Claude plugin since 1 July 2026; food sellers with online ordering are enrolled by default, ordering runs through Cash App | The restaurant is an entry in Square's catalog; ordering only |
-| Toast | Orders inside Google's Ask Maps since 6 August 2026 through Toast's own ordering | Same; Google and Toast own the surface |
-| OpenTable, Resy, Yelp | Tables bookable inside ChatGPT since 10 August 2026 | The aggregator owns ranking and the guest |
-| Owner.com | Site, ordering, CRM, AI agents; $499/month; $240M raised at $2.3B in August 2026 | Cloud; replaces the site; no agent endpoint announced |
-| Slang.ai | Phone AI for restaurants, $399–$599 per location per month | Phone only |
-| Microsoft NLWeb | Open source; site chat from schema.org data, and each instance is also an MCP server | Closest design. No private partition, no approved UI catalog, no owner goals, not local |
-| Scrunch AXP | Serves an agent-readable copy of a site; from $250/month | Read-only content; no actions, no on-site UI |
-| Cloudflare, Shopify | WebMCP toggle at the edge; per-store agent endpoints | Plumbing without the business's knowledge or goals; products, not restaurants |
-| Intercom Fin, Alhena | On-site AI agents, metered per outcome or conversation | Cloud; chat text; support and e-commerce |
-| Google A2UI | Open spec for agent-requested UI from a client catalog (v0.9.1; v1.0 candidate) | A format, not a product. We adopt its vocabulary |
-| UCP (Google, Square, Toast, DoorDash, Uber Eats) | Commerce protocol; the food vertical is listed as coming soon | The incumbents' standard for ordering. CAC should publish a UCP profile later, not compete |
+| Who | What they do | Gap against CAC | Take from them |
+|---|---|---|---|
+| Square | ChatGPT app and Claude plugin since 1 July 2026; food sellers with online ordering are enrolled by default; ordering runs through Cash App with no added marketplace commission | The restaurant is an entry in Square's catalog; ordering only | Tool names and the in-assistant order flow |
+| Toast | Orders inside Google's Ask Maps since 6 August 2026 through Toast's own ordering | Google and Toast own the surface | Same |
+| OpenTable, Resy, Yelp | Tables bookable inside ChatGPT since 10 August 2026 | The aggregator owns ranking and the guest | The booking request shape |
+| Owner.com | Site, ordering, CRM, AI agents; $249–$499/month; $240M raised at $2.3B in August 2026 | Cloud; replaces the site; no agent endpoint announced | Price anchor |
+| Slang.ai | Phone AI for restaurants, $399–$599 per location per month | Phone only | Price anchor |
+| Microsoft NLWeb | Open source; site chat from schema.org data; each instance is also an MCP server; a basic experimental `/a2a` route | Closest design we found, and it can be self-hosted. It answers from public schema.org data only: no private partition, no approved elements, no owner goals, no agent that learns from unanswered questions | The `ask` tool shape; schema.org-first ingestion |
+| Scrunch AXP | Serves an agent-readable copy of a site; from $250/month | Read-only content; no actions, no on-site UI | — |
+| Cloudflare, Shopify | WebMCP toggle at the edge; per-store agent endpoints | Plumbing without the business's knowledge or goals | Serving markdown to agents |
+| Intercom Fin, Alhena | On-site AI agents, metered per outcome or conversation | Cloud; chat text; support and e-commerce | A per-outcome metric: questions answered without the owner |
+| Google A2UI | Open spec for agent-requested UI from a client catalog | A format, not a product | Catalog, surface, action naming |
+| UCP (Google, Square, Toast, DoorDash, Uber Eats) | Commerce protocol; the food vertical is listed as coming soon | The incumbents' standard for ordering | Publish a UCP profile once the food vertical ships |
+
+Not checked: generative-UI frameworks as competitors (CopilotKit, Thesys, Vercel AI SDK) and
+Yext, Popmenu, BentoBox.
 
 **Where CAC is different**
 
 1. **Ownership.** The endpoint, the goals, and the interface belong to the restaurant.
 2. **The long tail.** Ordering protocols cover menus and checkout. Catering quotes, holiday
    hours, a mixed party, private events, and dietary nuance are where a governed graph helps.
-3. **One source for both audiences**, with a partition that holds under prompt injection.
+3. **One source for both audiences**, with a partition enforced by the database.
 4. **It learns from demand.** Every unanswered question becomes a question to the owner.
 
 **Objections to prepare for**
 
 | Objection | Answer |
 |---|---|
-| Square and Toast already give restaurants agent ordering for free | For ordering, yes, inside their channel. CAC covers what those protocols skip and keeps the customer with the owner. It can publish to UCP as one more channel. |
-| Why local when menus are public? | Goals, leads, customer notes, and visitor questions are not public, and they stay on the box. No third-party chat vendor holds transcripts. No per-conversation meter. The owner keeps the agent if they change platforms. |
-| Is local cheaper? | Not for inference alone. A cloud API would serve a small site's questions for under $30 a month. The case is ownership, privacy, and an agent that works all day at a flat cost. |
-| Can one box handle Valentine's Day? | Only new typed questions reach the model, answers are about 50 tokens, repeats are cached, clicks are free. Show the measured numbers. |
-| Will assistants actually call it? | Today the customer adds the connector. That is the same step as installing any Claude or ChatGPT app. Automatic discovery is not shipped by anyone; we say so. |
-| Standards keep changing | We depend on MCP and MCP Apps, which Claude and ChatGPT both ship. The catalog is our own JSON and maps to A2UI. |
+| Square and Toast already give restaurants agent ordering with no added commission | For ordering, yes, inside their channel. CAC covers what those flows skip and keeps the customer with the owner. It could publish a UCP profile as one more channel once the food vertical ships |
+| Why not run NLWeb on the box? | NLWeb is a query layer over public schema.org data. We add the private side enforced by the database, goals that steer answers, approved interactive elements, and an agent that asks the owner what customers could not get answered |
+| Why local when menus are public? | Goals, leads, customer notes and the raw visitor log are stored only on the box, and all business-side inference is local. With the local dashboard as owner channel, Flow 1 and Flow 3 run unplugged. No per-conversation meter. The owner keeps the agent if they change platforms |
+| Is local cheaper? | Not for inference alone: a cloud API would serve a small site's questions for roughly $15–$35 a month (our estimate at 3,000 questions). The case is ownership, privacy, and an agent that works all day at a flat cost |
+| Can one box handle Valentine's Day? | Only new typed questions reach the model, the output is a few dozen tokens, repeats are cached, clicks are free, and when busy it serves presets. Show the measured numbers. More demand means a second box, never a cloud model |
+| Will assistants actually call it? | Today the customer adds the connector by URL once. A directory listing is the route to one-click install. Automatic discovery is not shipped by anyone; we say so |
+| Standards keep changing | We depend on MCP and MCP Apps, which Claude and ChatGPT both ship. The catalog is our own JSON and maps to A2UI |
 
-## 13. Business model
+## 14. Business model
 
 - **Offer.** A managed appliance: the box, setup from the existing site, and updates.
-- **Price.** $299–$499 per month, in the band owners already pay Owner.com and reservation
-  platforms, with no commission and no per-conversation fee. This is our assumption, not a
-  tested price.
-- **Hardware cost.** Dell lists the 128 GB box at $9,007 (4 TB) and about $6,177 (1 TB) today;
-  a 64 GB version at $4,999 is announced for 23 October. Prices have risen sharply this year,
-  so quote them with a date.
+- **Price.** $299–$499 per month, in the band owners already pay Owner.com, with no commission
+  and no per-conversation fee. This is our assumption, not a tested price.
+- **Hardware.** Dell lists the 128 GB box at $9,007 (4 TB) and about $6,177 (1 TB) today.
+  Press reports put a 64 GB version at $4,999 from 23 October. Prices have risen sharply this
+  year, so quote them with a date.
+- **Unit economics (assumptions, 3 October 2026).** The 1 TB box at $6,177 is $172 a month
+  over 36 months. At $399 a month that leaves about $227 before support, and the hardware is
+  paid back in about 16 months. The owner's test: one extra catering order a month (40 covers
+  at $25 is $1,000) covers the subscription.
+- **Density.** One box can serve a restaurant group or a neighbourhood association, each
+  business with its own database and roles, which spreads the hardware cost. Not in v0.
 - **Market.** 412,498 independent restaurants in the US at the end of 2025 (Technomic). The
-  industry forecasts $1.55 trillion in 2026 sales and 42% of operators reported being
+  industry forecasts $1.55 trillion in 2026 sales, and 42% of operators reported being
   unprofitable last year (National Restaurant Association). Start with one city.
-- **Beyond restaurants.** The catalog changes per vertical (a salon's booking form needs a
-  staff picker); the graph, partition, and agents do not.
+- **Beyond restaurants.** The catalog changes per vertical: a salon's booking is the same
+  generic form element with a staff field. The graph, partition, and agent do not change.
+- **Measuring the other CAC.** The overlay counts leads captured and goal buttons shown and
+  clicked. That is how the box will measure acquisition cost; we claim no result yet.
 
-## 14. Demo and pitch
+## 15. Demo and pitch
 
-**Three-minute demo**
+**Lead line.** CAC creates the business's knowledge once and serves it everywhere: as
+interface to visitors, as tools to assistants. It keeps learning from what customers ask, and
+it never leaves the owner's box.
 
-1. The old site. Ask the audience to find the vegetarian mains. Then type it in the panel.
-2. "Are you open on the 4th of July?" The answer arrives with a booking button. Point out the
-   owner's goal doing its work.
-3. "Do you have gluten-free pasta?" The agent does not know and says so.
-4. The owner's phone buzzes. The agent asks. The owner replies in one line.
-5. Ask again. Now it answers, marked verified. No code changed.
-6. Switch to Claude. Ask the two-friends question. The restaurant's own component renders in
-   Claude. Request a table. The lead appears on the box.
-7. Ask Claude for the names of tonight's guests. Nothing. Show the canary test and the blocked
-   egress line. Show the overlay: latency, cache hits, cloud calls 0.
+**Demo (assume three minutes; ask the organizers).** Before going on stage, seed five visitor
+questions about gluten-free pasta and let the agent ask the owner, so only one agent turn
+happens live.
+
+| Time | Step |
+|---|---|
+| 0:00 | The old site. Type "vegetarian options": the list, verified badges, no Add buttons. Type "I want to pick up something vegetarian": same list with Add buttons. The overlay shows one model call each, then none on repeat |
+| 0:35 | "Are you open on the 4th of July?" Answer computed by code, with a "Book a table" button: the owner's goal at work. "Do you cater for 40?" The quote form, 40 filled in |
+| 1:00 | "Do you have gluten-free pasta?" The agent does not know and says so. Show the owner channel: the agent already asked. The owner replies in one line |
+| 1:15 | While the agent records and publishes: the privacy proof. Permission denied as the serving role; the OpenShell policy and a blocked egress attempt; the canary result |
+| 1:50 | Ask again. Now it answers, "Confirmed by the restaurant". No code changed |
+| 2:05 | Claude: ask the two-friends question. The restaurant's own element renders in Claude. Request a table. The lead appears in the owner inbox. (Or its recording) |
+| 2:40 | Unplug the network. Flow 1 still answers. Overlay: model host is the box, leads captured, cache hits |
 
 **How the build maps to the rubric (as the team understands it)**
 
 | Criterion | What we show |
 |---|---|
-| Local | All inference, graph, and agents on the box; overlay with zero cloud calls; OpenShell blocking egress; network unplugged for Flow 1 if the venue allows |
-| Technical | Constrained selection with code-filled facts; database-enforced partition; fixed retrieval; measured concurrency |
-| Business value | Owner goals in every answer; leads captured; the long tail platforms skip; the learning loop |
-| Pitch | WIMP to CAC; "it lowers your other CAC"; one live loop from unknown to answered |
+| Local | All inference, graph, and agent on the box; the Serve API refuses to start unless the model host is local; OpenShell blocks other egress; Flow 1 and Flow 3 run unplugged with the local dashboard as owner channel |
+| Technical | Constrained selection with code-written facts; database-enforced partition with allowlisted publish; fixed retrieval; measured latency and concurrency |
+| Business value | Owner goals in every answer; leads captured and counted; the long tail platforms skip; the learning loop |
+| Pitch | The lead line, then WIMP to CAC and "aimed at your other CAC", then one live loop from unknown to answered |
 
 **Claims to correct before pitching**
 
 | Do not say | Say instead |
 |---|---|
-| Shopify will stop merchants pulling their own data in December | Since 1 January 2026 merchants can no longer create an API app from their own Shopify admin; access runs through Shopify's developer platform with 24-hour tokens |
+| Shopify will stop merchants pulling their own data in December | Since 1 January 2026 new custom apps can no longer be created in the Shopify admin. Existing ones keep working; new ones are built in Shopify's Dev Dashboard, where own-store access uses tokens that expire after 24 hours. Merchants can still read their own data. The weaker point stands: the platform sets the terms for reaching your own data |
 | Restaurants are invisible to AI agents | Platforms have made restaurants orderable inside assistants; the restaurant is a row in their catalog |
 | Claude finds our agent from the website | The customer adds the restaurant's connector once |
 | It is cheaper than cloud | It is owned, private, and unmetered |
-| The box costs about $4,000 | About $6,200 to $9,000 today for 128 GB; $4,999 for the 64 GB model from 23 October |
-| ADUI | A2UI (Google's spec), and ours is an A2UI-style catalog |
-| AI referrals convert 60% better | True for US retail sites (Adobe, July 2026). Say it is retail data. |
+| A bigger deployment would fall back to a cloud model | When the box is busy it serves cached and preset answers; more demand means a second box |
+| The box costs about $4,000 | About $6,200 to $9,000 today for 128 GB; press reports put a 64 GB model at $4,999 from 23 October |
+| ADUI | A2UI (Google's spec); ours is an A2UI-style catalog |
+| AI referrals convert 60% better | True for US retail sites (Adobe, July 2026). Say it is retail data |
+| It lowers customer acquisition cost | It is aimed at it, and it measures leads and goal clicks. No result yet |
+| Square's and Toast's AI ordering is built on UCP | Square's runs through Cash App ordering and Toast's through its own ordering. Both co-develop UCP's food vertical, which is listed as coming soon |
+| The box does 97 (or 2,776) tokens a second | One blog measured 97 single-stream; another measured 21. 2,776 is batched total throughput for an 8B model. Quote our own measurement |
 
-## 15. Build plan
+## 16. Build plan
 
-Three workstreams. Times are hours from start; freeze 90 minutes before the deadline.
+Written for a 9:00 PM deadline with building from 2:00 PM. If the deadline is 10:00 PM, the
+extra hour goes to Flow 2. A is the box and agent, B is the graph and pipeline, C is surfaces.
 
-| Hours | Box and brain | Graph | Surfaces |
+| Clock | A: box and agent | B: graph and pipeline | C: surfaces |
 |---|---|---|---|
-| 0–1 | Confirm NemoClaw, model, and vLLM on the box. Run 30 intents through the selection schema; record validity and latency at 1, 4, 8 concurrent. Start the tunnel. | Postgres up with SCHEMA.md DDL. Seed label registry. | Demo restaurant site (static pages, JSON-LD, one PDF menu). Widget shell with intent box. |
-| 1–3 | Intent pipeline end to end with exact cache. Slot extraction. | Ingest the demo site. Embeddings. Retrieval and expansion. Publish. | Six components from surface JSON. Presets. Actions. |
-| 3–5 | NemoClaw agents: Gardener on heartbeat, Liaison on Telegram, owner tools. | Binder rules, allergen handling, goal steer. Canary test. Gap storage. | MCP server with `ask_restaurant` text first, then the MCP App. Add connector in Claude. |
-| 5–7 | Gap to owner to publish loop working live. Load test. Metrics overlay. | Fixtures from SCHEMA.md section 9. Fix data quality. | History rail, chips, theme. Booking and catering forms to leads. |
-| 7–8 | Recovery script. Blocked-egress demo. | Second pass on demo data. | Screen recording of every flow as backup. |
-| After | Freeze. Rehearse twice. Submit through BuilderBase. | | |
+| 2:00–3:00 | First-30-minute checks. One OpenClaw agent sends "hello" on the owner channel. Benchmark a standalone selection function on the 30 fixture intents at 1 and 4 concurrent | Postgres, DDL, roles. Load the seed, publish. Stub `/v1/intent` that serves the golden surface fixtures | Static demo site from the same seed. Widget shell against the stub. 15 minutes on a hello-world MCP connector through the tunnel: go or no-go for Flow 2 |
+| 3:00–5:00 | Owner tools API. Agent loop against a seeded fake gap: list gaps, ask owner, record answer, publish | Real pipeline: slots, retrieval, selection, validator, binder, exact cache, logging | Five components plus `AllergenNotice` and `GoalCTA` from fixtures. Presets. Forms to leads. Cart count |
+| **5:00 gate** | The loop runs on the box with a fake gap, else apply cut line 3 now | `/v1/intent` passes 27 of 30 fixtures | Widget renders every fixture |
+| 5:00–6:30 | Loop on real gaps. OpenShell policy file, blocked-egress script, recovery script. Digest | Verified-only rules, steer, canary and permission scripts, metrics, pre-warm on publish | Chips, overlay, owner inbox page, busy and error states |
+| **6:30 gate** | Flow 1 and Flow 3 pass acceptance. Only then start Flow 2 | | |
+| 6:30–7:30 | Load test at 1, 4, 8, once with an agent turn in flight | Data quality. JSON-LD ingest if time | Flow 2: text-only `ask_restaurant`, then the MCP App. If the gate failed, help close P0 |
+| 7:30–8:00 | Record every flow as backup | | |
+| 8:00 | Freeze. Rehearse twice. Submit through BuilderBase by 8:45 | | |
+
+**First 30 minutes (these decide the day)**
+
+1. Ask an organizer: the deadline in Eastern time, what the submission needs (repo, video,
+   deck), how long the demo slot is, and open questions 3 and 4 below.
+2. `curl` the local model endpoint: the model answers, and a structured-output call is valid
+   with thinking off.
+3. Time one agent turn with one tool call. Write the seconds into Flow 3.
+4. An embedding model is on disk and returns a vector; record its length and set it in the
+   DDL. If none, switch to the full-text fallback now.
+5. With the model server, embedder and Postgres running, at least 16 GB of memory is free.
+6. The pgvector image starts; Python and Node dependencies install.
+7. The sandboxed agent can reach the Owner tools API, and the owner channel delivers a message.
+8. A hello-world MCP server with a static UI resource renders in Claude through the tunnel, on
+   an account that allows custom connectors.
+9. Decide the vLLM concurrency setting now.
 
 **Cut lines, in order**
 
-1. MCP App UI not rendering by hour 5: ship text-only `ask_restaurant`, show the component in
-   the local MCP Apps test host.
-2. Tunnel blocked by venue network: use a phone hotspot; failing that, demo Flow 2 from the
+1. Flow 2 is not started unless the 6:30 gate passes. If the MCP App does not render, ship
+   text-only `ask_restaurant` and show the element in the local MCP Apps test host.
+2. Tunnel blocked by the venue network: phone hotspot; failing that, demo Flow 2 from the
    local test host and say why.
-3. Telegram unavailable: use the OpenClaw local dashboard as the owner channel.
-4. NemoClaw agents unstable by hour 6: keep one agent doing the gap question only; run
-   pre-warming as a plain scheduled job.
-5. Structured output unreliable through one backend: switch backend (vLLM or Ollama `format`),
-   keep the validator and one retry.
+3. Agent loop not running by 5:00: reduce the agent to one job (ask the owner about the top
+   gap, record the reply) and move publishing to a button on the owner inbox.
+4. Sandboxed agent cannot reach the Owner tools API over plain HTTP: register the same
+   endpoints as a Streamable HTTP MCP server with NemoClaw, which is the tool path it
+   documents.
+5. Local dashboard not reachable from a phone: use a messaging channel and say on stage that
+   the owner chose it.
+6. Structured output unreliable on one backend: switch backend, keep the validator and one
+   retry.
 
-**Check in the first 30 minutes**
-
-- Structured output works with thinking disabled on the installed model.
-- The sandboxed agent can reach the owner tools API on the host under the OpenShell policy.
-- An outbound tunnel connects from the venue network.
-- Whether the demo site carries JSON-LD at item level (most sites do not; seed it if needed).
-
-## 16. Risks
+## 17. Risks
 
 | Risk | Likelihood | Mitigation |
 |---|---|---|
-| NemoClaw setup eats hours (alpha; 30–60 min first install; no auto-restart after reboot) | High | One person owns it from minute 0; scripted recovery; minimal agent scope |
-| Judges read the direct model path as bypassing the required stack | Medium | Ask a mentor in hour 0; make the agents visibly essential in the demo |
-| Cloud assistant in the demo read as "not fully local" | Medium | Frame it as the customer's assistant; all business-side AI is local; have the local host fallback |
-| Model picks the wrong component | Medium | Tiny catalog, `use_when` descriptions, intent exemplars, validator, `Answer` fallback |
-| Semantic cache returns the wrong answer for near-duplicates (4th vs 5th of July) | Medium | Slots must match exactly; ship exact cache first |
-| Live network failure on stage | Medium | Recordings of every flow; Flow 1 works with no internet |
-| Wrong allergen information | Low, high impact | Verified-only rendering; fictional demo restaurant; notice component |
-| Latency under concurrent load | Medium | Raise sequence limit; short outputs; cache; measure in hour 0 |
+| Less time than planned (deadline is 9 or 10 PM) | High | Clock-based plan, two gates, Flow 2 behind the second gate |
+| NemoClaw setup eats hours (alpha; 30–60 min first install; no auto-restart) | High | One person owns it from the first minute; scripted recovery; one agent, one job |
+| Judges read the direct model path as bypassing the required stack | Medium | Ask a mentor early; present it as a security decision; Plan B in section 11 |
+| A cloud assistant in the demo read as "not fully local" | Medium | Frame it as the customer's assistant; end the demo unplugged; have the recording |
+| Model picks the wrong component | Medium | Tiny catalog, `use_when` lines, 30-intent fixture with a pass mark, busy fallback |
+| Agent turn too slow for a live demo | Medium | Measure in the first 30 minutes; pre-ask the owner before going on stage |
+| Publish empties the cache mid-demo | Certain | Pre-warm on publish (P0) |
+| Embedding model missing on the box | Medium | Full-text fallback behind the same function |
+| Live network failure on stage | Medium | Recordings of every flow; Flow 1 and Flow 3 work with no internet |
+| Wrong allergen information | Low, high impact | Verified-only badges; no safe lists; fictional restaurant; notice component |
 
-## 17. Open questions
+## 18. Open questions
 
 **Ask organizers or a mentor now**
 
-1. What is the exact submission deadline in Eastern time?
+1. What is the exact submission deadline in Eastern time, and what must be submitted?
 2. Is there a written rubric? Is there a scoring bonus for smaller teams, as in San Francisco?
 3. Must every model call pass through the OpenClaw agent, or may a local service call the same
    local model directly?
-4. May a cloud assistant appear in the demo as the external customer's agent?
-5. What is preinstalled on the box (NemoClaw, which model weights)?
+4. The series rule says the agent "runs locally on the box (no cloud API)". May a cloud
+   assistant appear in the demo as the external customer's agent?
+5. What is preinstalled on the box (NemoClaw, which model weights, an embedding model)?
+6. How long is the demo slot?
 
-**Decide as a team**
+**Decided here; change if you disagree**
 
-1. Fictional demo restaurant (recommended, avoids real allergen claims) or a real local one?
-2. Owner channel for the demo: Telegram or the local dashboard?
-3. Who presents, and who drives the two screens?
+1. The demo restaurant is fictional, to avoid real allergen claims about a real business.
+2. The owner channel is the local OpenClaw dashboard; a messaging app is optional.
 
-## 18. Ideas to build on
+## 19. Ideas to build on
 
-- **Demand report.** "Thirty-seven people asked about gluten-free this month and you have no
-  tagged items." The intent log is market research the owner has never had.
-- **Agent-to-agent negotiation.** The customer's assistant asks for six at 7:00. The local
-  agent offers 6:30 or 8:15 and mentions the prix fixe, following the owner's goals.
-- **Verified-by-owner as a trust signal.** Assistants prefer sources that state provenance.
-  Signed, dated answers are something a scraped page cannot offer.
-- **Proposed components.** When a cluster of questions has no fitting element (gift cards,
-  private dining), the agent drafts one from primitives and asks the owner to approve it.
-- **Same tools in the browser.** Register the tools through WebMCP so browser agents on the
-  page use the fixed paths instead of guessing at the DOM.
-- **Per-vertical catalogs.** Salon, clinic, repair shop: new components and labels, same core.
-- **Voice.** The wireframe has a microphone. Local speech recognition keeps it on the box.
-
-## 19. Glossary
-
-| Term | Meaning |
-|---|---|
-| Surface | One response: a short sentence plus one to three components with data and actions |
-| Selection | The model's output: component names, node ids, parameters |
-| Catalog | The owner-approved set of components the model may choose from |
-| Binder | Code that validates a selection and fills it with graph data |
-| Publish | The step that copies approved public nodes to the serving store |
-| Steer | A per-component weight derived from private goals |
-| Gap | A question the graph could not answer |
-| A2UI | Google's open spec for agent-requested UI from a client-side catalog |
-| MCP Apps | The MCP extension that lets a tool return an interactive component; rendered by Claude and ChatGPT |
-| A2A | Agent-to-agent protocol (v1.0); used between enterprise agents, not by consumer assistants today |
+| Idea | Helps with | Effort today | What to build |
+|---|---|---|---|
+| Demand report | Business value | 1 h | Digest from top topics, open gaps, and leads per element: "37 asked about gluten-free, 0 tagged dishes; 5 booking requests this week" |
+| Agent-proposed element | Technical, pitch | 2 h | A `FormCard` proposal from a cluster of gaps (gift cards, private dining); the owner replies yes; the element appears |
+| Onboarding interview | Business value | 1 h | Completeness check after ingest; one batched message of what is missing |
+| Slot-masked cache | Local, technical | 30 min | "Open on <any date>" costs one model call ever |
+| Confirmed-by-owner mark | Pitch | 30 min | "Confirmed by the restaurant, 3 Oct" on answers and in the text assistants read. Hypothesis: assistants may come to prefer sources that state provenance |
+| "Add to Claude" button on the site | Pitch | 30 min | The connector URL on the page: the nearest honest version of "Claude finds the site's agent" |
+| Voice | Local | 1–2 h, only if a speech model is already on the box | The wireframe's microphone, with local speech recognition |
+| Roadmap, talk only | — | — | Agent-to-agent negotiation (the assistant asks for six at 7:00; the agent offers 6:30 and the prix fixe), WebMCP tools for browser agents, per-vertical catalogs, UCP profile |
 
 ## 20. Sources
 
 Hackathon and stack
 
 - Event page: https://builderbase.com/event/dell-x-nvidia-ai-hackathon-boston
-- Series rules (other cities): https://luma.com/dellxnvdia-hackathon , https://events.cornell.edu/event/dell-x-nvidia-ai-hackathon
-- NemoClaw docs: https://docs.nvidia.com/nemoclaw/latest/reference/architecture.html
-- NemoClaw on Spark, vLLM defaults: https://docs.nvidia.com/nemoclaw/user-guide/openclaw/inference/local-inference/set-up-vllm
+- Series rules (other cities): https://luma.com/dellxnvdia-hackathon , https://events.cornell.edu/event/dell-x-nvidia-ai-hackathon , https://gtedge.ai/event/dell-x-nvidia-hackathon-local-ai-on-dell-pro-max-with-gb10-new-york-ny/
+- NemoClaw architecture: https://docs.nvidia.com/nemoclaw/latest/reference/architecture.html
+- NemoClaw release notes: https://docs.nvidia.com/nemoclaw/latest/about/release-notes.html
+- NemoClaw scope (one trusted operator): https://docs.nvidia.com/nemoclaw/user-guide/openclaw/about/overview.md
+- Sub-agents share a sandbox: https://docs.nvidia.com/nemoclaw/user-guide/openclaw/configure-agents/set-up-sub-agent.md
+- Heartbeats: https://docs.nvidia.com/nemoclaw/user-guide/openclaw/configure-agents/configure-agent-heartbeats.md
+- Managed MCP servers (NemoClaw is a client only): https://docs.nvidia.com/nemoclaw/user-guide/openclaw/manage-sandboxes/mcp-servers/about-managed-mcp-servers
+- vLLM defaults on Spark: https://docs.nvidia.com/nemoclaw/user-guide/openclaw/inference/local-inference/set-up-vllm
 - NVIDIA tutorial (30–90 s, prompt injection note): https://developer.nvidia.com/blog/build-a-secure-always-on-local-ai-agent-with-nvidia-nemoclaw-and-openclaw/
 - GB10 throughput: https://rikkarth.com/blog/2026-04-23-benchmark-results-for-qwen-qwen3-6-35b-a3b-fp8-nvidia-dgx-spark-gb10-serving-via-vllm , https://llmrequirements.com/news/2026-06-03-nvfp4-qwen-3-6-35b-dgx-spark
 - vLLM structured outputs: https://docs.vllm.ai/en/latest/features/structured_outputs/
@@ -539,9 +668,9 @@ Protocols
 - Custom connectors: https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp
 - MCP Apps quickstart: https://claude.com/docs/connectors/building/mcp-apps/quickstart
 - MCP Apps spec: https://modelcontextprotocol.io/seps/1865-mcp-apps-interactive-user-interfaces-for-mcp
+- MCP Apps in ChatGPT: https://developers.openai.com/apps-sdk/mcp-apps-in-chatgpt
 - A2UI: https://a2ui.org/
 - A2A: https://a2a-protocol.org/latest/specification/
-- A2A card survey: https://apievangelist.com/2026/07/29/most-published-agent-cards-are-not-actually-a2a/
 
 Graph and safety
 
@@ -555,8 +684,8 @@ Graph and safety
 Generative UI and UX
 
 - Google generative UI paper: https://generativeui.github.io/static/pdfs/paper.pdf
-- NN/g on site chatbots: https://www.nngroup.com/articles/site-ai-chatbot/
 - NN/g, intent-based interfaces: https://www.nngroup.com/articles/ai-paradigm/
+- AI crawlers and JavaScript: https://vercel.com/blog/the-rise-of-the-ai-crawler
 
 Competition and market
 
@@ -564,15 +693,21 @@ Competition and market
 - Toast in Ask Maps: https://finance.yahoo.com/technology/ai/articles/arriving-now-ai-powered-toast-123000618.html
 - ChatGPT bookings: https://www.androidauthority.com/chatgpt-restaurant-reservations-and-waitlists-3696712/
 - Owner.com funding and pricing: https://www.prnewswire.com/news-releases/owner-raises-240m-led-by-goldman-sachs-alternatives-to-build-the-ai-native-platform-for-every-local-business-302862420.html , https://www.owner.com/pricing
+- Slang.ai pricing: https://www.slang.ai/pricing
+- Intercom pricing: https://www.intercom.com/pricing ; Alhena pricing: https://alhena.ai/pricing
 - NLWeb: https://github.com/nlweb-ai/NLWeb
 - Scrunch pricing: https://scrunch.com/pricing
+- Cloudflare WebMCP: https://blog.cloudflare.com/webmcp/
+- Shopify store endpoints: https://shopify.dev/docs/apps/build/storefront-mcp
 - UCP: https://ucp.dev/
-- Amsterdam restaurant study: https://dev.to/blondedevrules/we-built-an-mcp-server-so-any-assistant-can-book-a-table-2le3
+- Amsterdam restaurant test: https://dev.to/blondedevrules/we-built-an-mcp-server-so-any-assistant-can-book-a-table-2le3
 - BrightLocal survey: https://www.brightlocal.com/research/local-consumer-review-survey/
-- SOCi visibility: https://www.soci.ai/blog/restaurant-local-visibility-benchmarks/
 - Adobe AI referral data: https://www.digitalcommerce360.com/2026/08/19/adobe-ai-referral-traffic-data-july-2026/
 - Technomic independents: https://www.nrn.com/independent-restaurants/the-independent-restaurant-sector-shrunk-by-2-3-in-2025
 - National Restaurant Association forecast: https://restaurant.org/research-and-media/media/press-releases/persistent-cost-increases-and-enduring-demand-will-shape-the-restaurant-industry-in-2026/
 - DoorDash commissions: https://merchants.doordash.com/en-us/products/marketplace
 - Dell pricing: https://www.dell.com/en-us/shop/desktop-computers/spd/dellpromaxwithgb10fcm1253
+- 64 GB model price: https://hothardware.com/news/nvidia-dgx-spark-64gb-release
+- Cloud API pricing: https://platform.claude.com/docs/en/about-claude/pricing
 - Shopify custom apps change: https://changelog.shopify.com/posts/legacy-custom-apps-can-t-be-created-after-january-1-2026
+- Shopify own-store tokens: https://shopify.dev/docs/apps/build/authentication-authorization/client-credentials-grant

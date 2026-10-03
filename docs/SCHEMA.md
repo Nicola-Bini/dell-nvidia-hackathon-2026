@@ -1,52 +1,97 @@
 # CAC — Schema and Contracts
 
-Companion to [PRD.md](PRD.md). This file is the source of truth for scaffolding: the graph
-store, the label and edge registries, the UI component catalog, and the wire contracts between
-the model, the Serve API, the widget, and external agents.
+Companion to [PRD.md](PRD.md). This file is the source of truth for scaffolding: runtime
+processes, the graph store, the label and edge registries, the UI component catalog, and the
+wire contracts between the model, the Serve API, the widget, the agent, and external assistants.
+
+Version 2, 3 October 2026. Revised after an independent review that ran the DDL in a test
+database and checked the contracts against the PRD's acceptance criteria.
 
 ## 1. Design rules
 
-1. **Default private.** A node is private and draft until someone labels it public and the owner
-   approves it. Nothing reaches a visitor or an external agent before `kg.publish()` copies it.
-2. **The partition is enforced by the database, not the prompt.** Serving processes connect as
-   `cac_serve`, which has no grant on the `kg` schema. They can only read `kg_public`.
-3. **No mixed nodes.** A public node carries only public props. A private fact about a public
-   thing (item margin, supplier) lives in a separate private node linked by an edge.
-4. **The model picks, code fills.** The model returns a component name and node ids. Names,
-   prices, hours, and diet badges are read from the graph by the binder. The model never writes
-   an allergen or diet claim.
+1. **Default private.** A node is private and draft until someone marks it public and the owner
+   approves it. Nothing reaches a visitor or an assistant before `kg.publish()` copies it.
+2. **The partition is enforced by the database, not the prompt.** The Serve API connects as
+   `cac_serve`, which has no grant on the `kg` schema. It can only read `kg_public`.
+3. **Publish copies an allowlist.** Only props named in the label registry cross the boundary.
+   A private prop left on a public node (supplier, margin) is dropped at publish.
+4. **The model chooses, code writes.** The model returns a component name and ids from a list
+   it was given. Every word and number a visitor sees comes from the graph or from a template.
+   The model writes no visitor-facing text.
 5. **No model-written queries.** Retrieval is vector entry plus fixed expansion templates.
-6. **Provenance on everything.** Every node and edge records where it came from and whether the
-   owner verified it.
+6. **Anonymous text never drives an agent that holds tools.** Visitors get one tool-less
+   constrained completion. The agent that can write to the graph sees only a short topic and
+   a count, and can only write the owner's own words.
+7. **Provenance on everything.** Every node and edge records its source and whether the owner
+   verified it.
+8. **One business per box in v0.** Every process reads `CAC_BUSINESS_ID`. Requests never carry
+   a business id. The `business_id` columns are for later; a second business needs its own
+   database and roles.
 
-## 2. Storage layout
+## 2. Runtime
 
-One Postgres container with pgvector (`pgvector/pgvector:pg18-trixie`, arm64 image exists).
+| Process | Stack | Port | Database role | Reachable from |
+|---|---|---|---|---|
+| Serve API | Python 3.12, FastAPI, psycopg 3 with raw SQL (no ORM) | 8080 | `cac_serve` | Site visitors; MCP server on localhost |
+| Owner tools API | Python, FastAPI | 8081 | `cac_owner` | The sandboxed agent and the owner's browser on the local network. Never tunnelled |
+| MCP server | Node 22, from Anthropic's MCP Apps quickstart | 8090 | none (calls Serve API) | The tunnel: only `/mcp` |
+| Widget | Vite, React, TypeScript; served by the Serve API at `/widget/` | — | — | Browser iframe; also built as one HTML file for the MCP App |
+| Postgres + pgvector | Docker | 127.0.0.1:5432 | — | Local processes only |
+| Model server | vLLM managed by NemoClaw (OpenAI-compatible) | 8000 | — | Serve API and NemoClaw |
+| Embedder | Local embedding model (decided in the first-30-minute checks) | — | — | Serve API, Owner tools API |
+| Agent | OpenClaw agent in a NemoClaw / OpenShell sandbox | — | none (calls Owner tools API) | Owner channel |
+
+No ORM on the Serve API: `cac_serve` can insert into the log and lead tables but not read
+them, and an ORM's `RETURNING` clause fails without read permission.
+
+Environment:
+
+| Variable | Meaning |
+|---|---|
+| `CAC_BUSINESS_ID` | `biz_demo` |
+| `CAC_TZ` | Business timezone, `America/New_York` |
+| `SERVE_DATABASE_URL`, `OWNER_DATABASE_URL` | Connection strings for the two roles |
+| `LLM_BASE_URL`, `LLM_MODEL` | Local model endpoint. The Serve API refuses to start unless the host is loopback or the box's own address |
+| `EMBED_BASE_URL`, `EMBED_MODEL`, `EMBED_DIM` | Local embedder; same start-up check |
+| `OWNER_TOOLS_TOKEN` | Bearer token the agent sends to the Owner tools API |
+| `OWNER_CHANNEL_USER_ID` | The one identity allowed to speak as the owner on the owner channel |
+| `MODEL_MAX_INFLIGHT` | Cap on concurrent model calls from the Serve API |
+| `INTENT_MAX_CHARS` | 300 |
+| `CAC_ALLOWED_ORIGINS` | Origins allowed to embed the widget |
+| `GAP_ASK_MIN_SESSIONS` | Distinct sessions before a gap is put to the owner (1 for the demo, 3 normally) |
+
+Start order, each gated on a health check: Postgres, embedder, Owner tools API, Serve API,
+MCP server, tunnel. A recovery script restarts Docker, the OpenShell gateway, and the NemoClaw
+sandbox, then re-runs the start order (NemoClaw does not restart on its own after a reboot).
+
+## 3. Storage layout
+
+One Postgres container with pgvector. Image `pgvector/pgvector:pg18-trixie` exists for arm64;
+the DDL below was run on `pg16`, so either works. For pg18 images mount the data volume at
+`/var/lib/postgresql`, not `/var/lib/postgresql/data`.
 
 | Schema | Contents | `cac_owner` | `cac_serve` |
 |---|---|---|---|
 | `kg` | Full graph: public, private, drafts, goals, gaps | read/write | no access |
-| `kg_public` | Published projection: approved public nodes and edges | write via `publish()` | read only |
-| `ops` | Intent log, cache, leads | read/write | insert log and leads, read/write cache |
+| `kg_public` | Published projection: approved public nodes, allowlisted props | written by `publish()` | read only |
+| `ops` | Intent log, cache, leads | read/write | insert-only on log and leads; read/write cache |
 
-Who connects as what:
+The image's default `postgres` user is a superuser and bypasses all of this. Use it once for
+bootstrap and never from an application.
 
-- `cac_serve`: Serve API and MCP server (everything a visitor or external agent can reach).
-- `cac_owner`: ingestion, owner tools API, and through it the NemoClaw agents.
-- The image's default `postgres` user is a superuser and bypasses row security. Use it once for
-  bootstrap and never from an application.
+## 4. DDL
 
-## 3. DDL
-
-Set the vector dimension to match the embedding model before creating tables (1024 fits
-`bge-m3` and `qwen3-embedding:0.6b`; `nomic-embed-text` is 768).
+Before running: confirm the embedding model on the box, record its vector length, and replace
+`1024` below if it differs (`bge-m3` and `qwen3-embedding:0.6b` are 1024; `nomic-embed-text`
+is 768).
 
 ```sql
--- Run once as the bootstrap superuser. Passwords come from the environment, not this file.
+-- Run once as the bootstrap superuser, with psql:
+--   psql -v owner_pw="$CAC_OWNER_PASSWORD" -v serve_pw="$CAC_SERVE_PASSWORD" -f schema.sql
 CREATE EXTENSION IF NOT EXISTS vector;
 
-CREATE ROLE cac_owner LOGIN;
-CREATE ROLE cac_serve LOGIN;
+CREATE ROLE cac_owner LOGIN PASSWORD :'owner_pw';
+CREATE ROLE cac_serve LOGIN PASSWORD :'serve_pw';
 
 CREATE SCHEMA kg AUTHORIZATION cac_owner;
 CREATE SCHEMA kg_public AUTHORIZATION cac_owner;
@@ -54,14 +99,15 @@ CREATE SCHEMA ops AUTHORIZATION cac_owner;
 
 SET ROLE cac_owner;
 
--- 3.1 Label registry: which labels may ever be published
+-- 4.1 Label registry: which labels may be published, and which of their props
 CREATE TABLE kg.label (
   label          text PRIMARY KEY,
   may_be_public  boolean NOT NULL,
+  public_props   text[] NOT NULL DEFAULT '{}',
   description    text NOT NULL
 );
 
--- 3.2 Full graph
+-- 4.2 Full graph
 CREATE TABLE kg.node (
   id                 text PRIMARY KEY,            -- prefixed slug, e.g. mi_mushroom_risotto
   business_id        text NOT NULL,
@@ -78,9 +124,7 @@ CREATE TABLE kg.node (
   extracted_by       text,                        -- model id or person
   verified_by_owner  boolean NOT NULL DEFAULT false,
   verified_at        timestamptz,
-  valid_from         timestamptz,
-  valid_to           timestamptz,
-  search_text        text NOT NULL DEFAULT '',    -- the text that gets embedded
+  search_text        text NOT NULL DEFAULT '',    -- built from name and public props only
   embedding          vector(1024),
   created_at         timestamptz NOT NULL DEFAULT now(),
   updated_at         timestamptz NOT NULL DEFAULT now()
@@ -106,7 +150,7 @@ CREATE TABLE kg.edge (
 CREATE INDEX edge_src_idx ON kg.edge (src, type);
 CREATE INDEX edge_dst_idx ON kg.edge (dst, type);
 
--- 3.3 Published projection: the only graph the serving role can read
+-- 4.3 Published projection: the only graph the serving role can read
 CREATE TABLE kg_public.node (
   id                 text PRIMARY KEY,
   business_id        text NOT NULL,
@@ -114,8 +158,7 @@ CREATE TABLE kg_public.node (
   name               text NOT NULL,
   props              jsonb NOT NULL,
   verified_by_owner  boolean NOT NULL,
-  valid_from         timestamptz,
-  valid_to           timestamptz,
+  verified_at        timestamptz,
   search_text        text NOT NULL,
   embedding          vector(1024)
 );
@@ -138,7 +181,56 @@ CREATE TABLE kg_public.meta (
   published_at   timestamptz NOT NULL
 );
 
--- 3.4 Publish: the owner-approved step that moves data across the boundary
+-- 4.4 Runtime tables
+CREATE TABLE ops.intent_log (
+  id             bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  ts             timestamptz NOT NULL DEFAULT now(),
+  business_id    text NOT NULL,
+  channel        text NOT NULL CHECK (channel IN ('web', 'nav', 'mcp', 'a2a', 'prewarm')),
+  session_id     text,
+  text           text NOT NULL,                  -- raw visitor text: private
+  slots          jsonb NOT NULL DEFAULT '{}'::jsonb,
+  cache          text NOT NULL CHECK (cache IN ('exact', 'semantic', 'miss', 'preset')),
+  selection      jsonb,
+  kind           text NOT NULL CHECK (kind IN ('answer', 'gap', 'off_topic', 'preset', 'error')),
+  gap_topic      text,                           -- set when kind = 'gap'
+  latency_ms     integer NOT NULL,
+  model          text,
+  graph_version  integer NOT NULL
+);
+
+CREATE TABLE ops.intent_cache (
+  id               bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  business_id      text NOT NULL,
+  graph_version    integer NOT NULL,
+  normalized_hash  text NOT NULL,                -- sha256 hex of the normalized text
+  slots_key        text NOT NULL,                -- canonical string of extracted slots
+  embedding        vector(1024),                 -- semantic cache (P1)
+  selection        jsonb NOT NULL,               -- the model's choice only; never text or data
+  hits             integer NOT NULL DEFAULT 0,
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (business_id, graph_version, normalized_hash, slots_key)
+);
+
+CREATE TABLE ops.lead (
+  id           uuid PRIMARY KEY,                 -- generated by the caller
+  ts           timestamptz NOT NULL DEFAULT now(),
+  business_id  text NOT NULL,
+  kind         text NOT NULL
+               CHECK (kind IN ('booking_request', 'catering_quote', 'pickup_order', 'form')),
+  component    text NOT NULL,                    -- which element produced it
+  payload      jsonb NOT NULL,                   -- customer details: private, on the box only
+  channel      text NOT NULL CHECK (channel IN ('web', 'mcp', 'a2a')),
+  session_id   text,
+  status       text NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'seen'))
+);
+
+CREATE TABLE ops.sync_state (
+  key    text PRIMARY KEY,                       -- e.g. 'gap_watermark'
+  value  bigint NOT NULL
+);
+
+-- 4.5 Publish: the owner-approved step that moves data across the boundary
 CREATE FUNCTION kg.publish(p_business text) RETURNS integer
 LANGUAGE plpgsql AS $$
 DECLARE
@@ -147,10 +239,12 @@ BEGIN
   DELETE FROM kg_public.node WHERE business_id = p_business;  -- edges cascade
 
   INSERT INTO kg_public.node
-    (id, business_id, label, name, props, verified_by_owner,
-     valid_from, valid_to, search_text, embedding)
-  SELECT n.id, n.business_id, n.label, n.name, n.props, n.verified_by_owner,
-         n.valid_from, n.valid_to, n.search_text, n.embedding
+    (id, business_id, label, name, props, verified_by_owner, verified_at, search_text, embedding)
+  SELECT n.id, n.business_id, n.label, n.name,
+         COALESCE((SELECT jsonb_object_agg(p.key, p.value)
+                   FROM jsonb_each(n.props) AS p
+                   WHERE p.key = ANY (l.public_props)), '{}'::jsonb),
+         n.verified_by_owner, n.verified_at, n.search_text, n.embedding
   FROM kg.node n
   JOIN kg.label l ON l.label = n.label
   WHERE n.business_id = p_business
@@ -159,18 +253,24 @@ BEGIN
     AND l.may_be_public;
 
   INSERT INTO kg_public.edge (src, dst, type, props, verified_by_owner)
-  SELECT e.src, e.dst, e.type, e.props, e.verified_by_owner
+  SELECT e.src, e.dst, e.type,
+         COALESCE((SELECT jsonb_object_agg(p.key, p.value)
+                   FROM jsonb_each(e.props) AS p
+                   WHERE p.key IN ('position', 'weight')), '{}'::jsonb),
+         e.verified_by_owner
   FROM kg.edge e
   WHERE e.business_id = p_business
     AND e.status = 'approved'
     AND EXISTS (SELECT 1 FROM kg_public.node s WHERE s.id = e.src)
     AND EXISTS (SELECT 1 FROM kg_public.node d WHERE d.id = e.dst);
 
-  -- Goals stay private; components only receive a numeric steering weight.
+  -- Goals stay private; components only receive a numeric steering weight (5 = most important).
   UPDATE kg_public.node c
   SET props = c.props || jsonb_build_object('steer', s.weight)
   FROM (
-    SELECT e.src AS component_id, max((g.props ->> 'priority')::integer) AS weight
+    SELECT e.src AS component_id,
+           max(CASE WHEN g.props ->> 'priority' ~ '^[1-5]$'
+                    THEN (g.props ->> 'priority')::integer END) AS weight
     FROM kg.edge e
     JOIN kg.node g ON g.id = e.dst
     WHERE e.business_id = p_business
@@ -178,7 +278,7 @@ BEGIN
       AND g.label = 'Goal' AND g.status = 'approved'
     GROUP BY e.src
   ) s
-  WHERE c.id = s.component_id;
+  WHERE c.id = s.component_id AND s.weight IS NOT NULL;
 
   INSERT INTO kg_public.meta (business_id, graph_version, published_at)
   VALUES (p_business, 1, now())
@@ -186,53 +286,13 @@ BEGIN
     SET graph_version = kg_public.meta.graph_version + 1, published_at = now()
   RETURNING graph_version INTO v_version;
 
+  DELETE FROM ops.intent_cache
+  WHERE business_id = p_business AND graph_version < v_version;
+
   RETURN v_version;
 END $$;
 
--- 3.5 Runtime tables
-CREATE TABLE ops.intent_log (
-  id             bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  ts             timestamptz NOT NULL DEFAULT now(),
-  business_id    text NOT NULL,
-  channel        text NOT NULL CHECK (channel IN ('web', 'nav', 'mcp', 'a2a')),
-  session_id     text,
-  text           text NOT NULL,                  -- raw visitor text: treat as private
-  normalized     text NOT NULL,
-  slots          jsonb NOT NULL DEFAULT '{}'::jsonb,
-  cache          text NOT NULL CHECK (cache IN ('exact', 'semantic', 'miss', 'preset')),
-  selection      jsonb,
-  gap            text,                           -- what the graph could not answer, if anything
-  latency_ms     integer NOT NULL,
-  model          text,
-  graph_version  integer NOT NULL
-);
-
-CREATE TABLE ops.intent_cache (
-  id             bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  business_id    text NOT NULL,
-  graph_version  integer NOT NULL,
-  normalized     text NOT NULL,
-  slots_key      text NOT NULL,                  -- canonical string of extracted slots
-  embedding      vector(1024),
-  selection      jsonb NOT NULL,                 -- the model's choice, never hydrated data
-  hits           integer NOT NULL DEFAULT 0,
-  created_at     timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (business_id, graph_version, normalized, slots_key)
-);
-
-CREATE TABLE ops.lead (
-  id           uuid PRIMARY KEY,                 -- generated by the caller, so no RETURNING needed
-  ts           timestamptz NOT NULL DEFAULT now(),
-  business_id  text NOT NULL,
-  kind         text NOT NULL
-               CHECK (kind IN ('booking_request', 'catering_quote', 'pickup_order', 'contact')),
-  payload      jsonb NOT NULL,                   -- contains customer PII: private, on the box only
-  channel      text NOT NULL,
-  session_id   text,
-  status       text NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'confirmed', 'declined'))
-);
-
--- 3.6 Grants: cac_serve never receives anything on schema kg
+-- 4.6 Grants: cac_serve never receives anything on schema kg
 GRANT USAGE ON SCHEMA kg_public TO cac_serve;
 GRANT SELECT ON ALL TABLES IN SCHEMA kg_public TO cac_serve;
 GRANT USAGE ON SCHEMA ops TO cac_serve;
@@ -242,332 +302,555 @@ GRANT SELECT, INSERT, UPDATE ON ops.intent_cache TO cac_serve;
 RESET ROLE;
 ```
 
-## 4. Label registry
+`cac_serve` is insert-only on `ops.intent_log` and `ops.lead`. Use plain inserts with no
+`RETURNING` and no `ON CONFLICT` (both need read permission). Treat a duplicate-key error on
+`ops.lead` as "already stored".
 
-Seed `kg.label` with these rows. Id prefixes keep ids readable in logs and prompts.
+## 5. Label registry
 
-| Label | Prefix | May be public | Key props | schema.org source |
+How the whiteboard's four graph sections map here:
+
+| Whiteboard | In this schema |
+|---|---|
+| Goals | `Goal` nodes (private) |
+| UI element library | `UIComponent` nodes (section 7) |
+| Context library | Business through FAQ in the table below |
+| Connections | `ADVANCES` (element to goal), each element's `binds` (element to the context it may show), and in P1 `RENDERS_WITH` (intent to element) |
+
+Seed `kg.label` with these rows. `public_props` is exactly the props listed; anything else on
+a node is dropped at publish. `search_text` is built only from `name` and these props.
+
+| Label | Prefix | Public | Props | Build |
 |---|---|---|---|---|
-| Business | `biz_` | yes | `cuisine[]`, `price_range`, `phone`, `url`, `tagline` | `Restaurant` |
-| Location | `loc_` | yes | `street`, `city`, `region`, `postal`, `lat`, `lng`, `parking`, `transit` | `PostalAddress`, `GeoCoordinates` |
-| HoursSpec | `hrs_` | yes | `days[]` (mon..sun), `opens`, `closes`, `service` (dine_in, kitchen, bar) | `OpeningHoursSpecification` |
-| SpecialHours | `sh_` | yes | `date`, `closed`, `opens`, `closes`, `note` | `specialOpeningHoursSpecification` |
-| Menu | `menu_` | yes | `kind` (dinner, lunch, drinks, catering) | `Menu` |
-| MenuSection | `sec_` | yes | `position` | `MenuSection` |
-| MenuItem | `mi_` | yes | `description`, `price_cents`, `currency`, `course`, `image_id`, `available` | `MenuItem`, `Offer` |
-| Ingredient | `ing_` | yes | — | — |
-| Allergen | `alg_` | yes | `fda_major` (bool) | none (custom) |
-| Diet | `diet_` | yes | `schema_org` (e.g. `VegetarianDiet`) | `RestrictedDiet` |
-| Service | `svc_` | yes | `kind` (dine_in, takeout, catering, private_events, reservations), `details`, `min_headcount` | `acceptsReservations` etc. |
-| FAQ | `faq_` | yes | `question`, `answer` | `FAQPage` |
-| ReviewSummary | `rev_` | yes | `rating`, `count`, `source`, `highlights[]` | `AggregateRating` |
-| BrandTrait | `trait_` | yes | `kind` (vibe, tone, color, font), `value` | — |
-| MediaAsset | `img_` | yes | `url`, `alt` | `ImageObject` |
-| Promotion | `promo_` | yes | `details`, `days[]` | `Offer` |
-| UIComponent | `ui_` | yes | catalog entry (section 6) | — |
-| Intent | `int_` | yes | `examples[]`, `kind` (know, order, book, contact) | — |
-| Action | `act_` | yes | `handler` (client, server), `payload_schema` | — |
-| Goal | `goal_` | **no** | `statement`, `priority` (1..5), `metric` | — |
-| KnowledgeGap | `gap_` | **no** | `question`, `count`, `examples[]`, `state` (open, asked, answered) | — |
-| Proposal | `prop_` | **no** | `kind` (node, edge, component, intent), `draft`, `reason` | — |
-| Customer | `cust_` | **no** | `name`, `contact`, `notes` | — |
-| OwnerNote | `note_` | **no** | `text` | — |
+| Business | `biz_` | yes | `cuisine`, `price_range`, `phone`, `url`, `tagline`, `timezone` | P0 |
+| Location | `loc_` | yes | `street`, `city`, `region`, `postal`, `maps_url`, `parking`, `transit` | P0 |
+| HoursSpec | `hrs_` | yes | `days` (mon..sun), `opens`, `closes` (HH:MM) | P0 |
+| SpecialHours | `sh_` | yes | `date` (YYYY-MM-DD), `closed`, `opens`, `closes`, `note` | P0 |
+| MenuSection | `sec_` | yes | `position` | P0 |
+| MenuItem | `mi_` | yes | `description`, `price_cents`, `currency`, `available` | P0 |
+| Diet | `diet_` | yes | `schema_org`, `synonyms` | P0 |
+| Allergen | `alg_` | yes | `fda_major`, `synonyms` | P0 |
+| Service | `svc_` | yes | `kind` (reservations, catering, takeout, private_events), `details`, `min_headcount`, `booking_url` | P0 |
+| FAQ | `faq_` | yes | `question`, `answer` | P0 |
+| UIComponent | `ui_` | yes | catalog entry keys (section 7) | P0 |
+| Goal | `goal_` | **no** | `statement`, `priority` (1..5, 5 = most important) | P0 |
+| KnowledgeGap | `gap_` | **no** | `topic`, `count`, `sessions`, `state` (open, asked, answered), `origin` (visitor, onboarding) | P0 |
+| Customer | `cust_` | **no** | `name`, `contact`, `notes` | P0 (canary only) |
+| ReviewSummary | `rev_` | yes | `rating`, `count`, `source`, `highlights` | P1 |
+| BrandTrait | `trait_` | yes | `kind` (color, font, tone), `value` | P1 |
+| Intent | `int_` | yes | `examples`, `kind` (know, order, book, contact) | P1 |
+| Ingredient | `ing_` | yes | — | later |
+| MediaAsset | `img_` | yes | `url`, `alt` | later |
+| Promotion | `promo_` | yes | `details`, `days` | later |
+| Proposal | `prop_` | **no** | `kind`, `draft`, `reason` | P1 |
+| OwnerNote | `note_` | **no** | `text` | later |
 
-`search_text` per label is a short generated sentence, for example for a MenuItem:
-`"Mushroom risotto. Main course. Arborio rice, wild mushrooms, parmesan. $24."`
+Site content that fits no typed label (about, story, policies) is stored as an FAQ with the
+page heading as `question`.
 
-## 5. Edge registry
+`FAQ.question` is always a canonical rewrite or seed text, never copied from a visitor's
+message.
 
-| Type | From → To | Props | Notes |
-|---|---|---|---|
-| `HAS_LOCATION` | Business → Location | — | |
-| `HAS_HOURS` | Business → HoursSpec, SpecialHours | — | Open/closed is computed in code |
-| `HAS_MENU` | Business → Menu | — | |
-| `HAS_SECTION` | Menu → MenuSection | — | |
-| `HAS_ITEM` | MenuSection → MenuItem | `position` | |
-| `CONTAINS` | MenuItem → Ingredient | — | |
-| `CONTAINS_ALLERGEN` | MenuItem → Allergen | — | Rendered as fact only if `verified_by_owner` |
-| `SUITABLE_FOR` | MenuItem → Diet | — | Badge shown only if `verified_by_owner` |
-| `PAIRS_WITH` | MenuItem → MenuItem | `reason` | Upsell suggestions |
-| `OFFERS` | Business → Service, Promotion | — | |
-| `HAS_TRAIT` | Business → BrandTrait | — | Drives widget theme and tone |
-| `HAS_REVIEWS` | Business → ReviewSummary | — | |
-| `DEPICTS` | MediaAsset → any public node | — | |
-| `ANSWERS` | FAQ → Service, MenuItem, Business | — | |
-| `RENDERS_WITH` | Intent → UIComponent | `weight` | Retrieval returns the component with the data |
-| `TRIGGERS` | UIComponent → Action | — | Deterministic path, no model call |
-| `ADVANCES` | UIComponent → Goal | — | Never published; becomes `steer` weight |
-| `ABOUT` | KnowledgeGap, Proposal → any node | — | Private |
+## 6. Edge registry
 
-Fixed expansion templates (run after vector entry, written by us, never by the model):
+| Type | From → To | Props | Build | Notes |
+|---|---|---|---|---|
+| `HAS_LOCATION` | Business → Location | — | P0 | |
+| `HAS_HOURS` | Business → HoursSpec, SpecialHours | — | P0 | Open or closed is computed in code |
+| `HAS_SECTION` | Business → MenuSection | — | P0 | |
+| `HAS_ITEM` | MenuSection → MenuItem | `position` | P0 | |
+| `SUITABLE_FOR` | MenuItem → Diet | — | P0 | Badge shown only if `verified_by_owner` |
+| `CONTAINS_ALLERGEN` | MenuItem → Allergen | — | P0 | Shown as fact only if `verified_by_owner` |
+| `OFFERS` | Business → Service | — | P0 | |
+| `ANSWERS` | FAQ → Business, Service, MenuItem | — | P0 | |
+| `ADVANCES` | UIComponent → Goal | — | P0 | Never published; becomes `steer` |
+| `ABOUT` | KnowledgeGap → FAQ, SpecialHours | — | P0 | Links a gap to what answered it |
+| `RENDERS_WITH` | Intent → UIComponent | `weight` | P1 | |
+| `PAIRS_WITH` | MenuItem → MenuItem | — | later | |
+| `CONTAINS` | MenuItem → Ingredient | — | later | |
+| `DEPICTS` | MediaAsset → any public node | — | later | |
+
+Retrieval: embed the visitor's text, take the top 8 nodes by cosine similarity among data
+labels (never UIComponent), drop weak matches (threshold tuned on the fixture set, start at
+0.35), expand with the fixed templates below, and cap at 40 candidates.
 
 | Entry label | Expansion |
 |---|---|
-| Diet | items with `SUITABLE_FOR` to it (verified first), their sections |
-| Allergen | items with `CONTAINS_ALLERGEN` to it, and all items lacking a verified edge |
-| MenuItem | its section, ingredients, diets, allergens, `PAIRS_WITH` items |
-| MenuSection, Menu | child items |
-| Service | linked FAQ, Promotion |
-| HoursSpec, SpecialHours | all hours nodes for the business |
-| Intent | components via `RENDERS_WITH` |
+| Diet | MenuItems with an approved `SUITABLE_FOR` edge to it, and their sections |
+| Allergen | MenuItems with an owner-verified `CONTAINS_ALLERGEN` edge to it |
+| MenuItem | its section, diets, allergens |
+| MenuSection | its items |
+| Service | FAQs that `ANSWERS` it |
+| HoursSpec, SpecialHours | all hours nodes |
+| FAQ | the node itself |
 
-## 6. UI component catalog
+If no embedding model is available on the box, the same `retrieve(text) → candidates` function
+is backed by Postgres full-text search plus `pg_trgm` over `search_text`, using the `synonyms`
+props.
+
+## 7. UI component catalog
 
 The catalog is the set of owner-approved `UIComponent` nodes. Each maps to one prebuilt React
-component. The vocabulary (catalog, surface, action) follows Google's A2UI so the format can be
-mapped to an A2UI catalog later; v0 does not ship an A2UI renderer.
+component. "Element" on the whiteboard and "component" here are the same thing. The vocabulary
+(catalog, surface, action) follows Google's A2UI so the format can be mapped to an A2UI catalog
+later; v0 does not ship an A2UI renderer.
 
-Catalog entry (stored in `UIComponent.props`):
+Catalog entry (the props of a `UIComponent` node, id `ui_<component>`):
 
 ```json
 {
-  "component": "MenuList",
+  "component": "BookingForm",
   "version": 1,
-  "use_when": "Visitor asks what dishes exist, or filters by diet, ingredient, course or price.",
-  "binds": { "label": "MenuItem", "min": 1, "max": 12 },
-  "params": {},
-  "optional_actions": ["add_to_cart"],
-  "action_rule": "Include add_to_cart only when the visitor wants to order, not when they only want to know.",
+  "use_when": "Visitor wants a table or asks how to reserve.",
+  "binds": { "labels": ["Service"], "min": 1, "max": 1 },
+  "selectable": true,
+  "preset": "booking",
+  "cta_label": "Book a table",
+  "rail_label": "Booking",
+  "say": "Tell us when and how many.",
+  "chips": ["See the menu", "Are you open tonight?"],
   "channels": ["web", "mcp"],
-  "selectable": true
+  "primitive": null,
+  "fields": null
 }
 ```
 
-Catalog for the hackathon build:
-
-| Component | Use when | Binds | Params | Actions | Priority |
+| Component | Use when | Binds | Chosen by | Actions | Build |
 |---|---|---|---|---|---|
-| `Answer` | A short factual reply is enough, or nothing else fits | none | — | — | P0 |
-| `MenuList` | Dishes, diets, courses, prices | MenuItem[1..12] | — | `add_to_cart` (optional) | P0 |
-| `ItemCard` | One specific dish | MenuItem[1] | — | `add_to_cart` (optional) | P0 |
-| `HoursCard` | Opening hours, "are you open on…" | HoursSpec, SpecialHours | `date?` | `open_view:BookingForm` | P0 |
-| `BookingForm` | Wants a table | Service[reservations] | `date?`, `time?`, `party_size?` | `submit_booking_request` | P0 |
-| `CateringQuoteForm` | Catering, large groups, events | Service[catering] | `headcount?`, `date?` | `submit_catering_quote` | P0 |
-| `LocationCard` | Address, directions, parking, contact | Location | — | `directions`, `call` | P0 |
-| `ReviewHighlights` | Reputation, "is it good" | ReviewSummary | — | — | P1 |
-| `Cart` | Visitor has added items | client state | — | `submit_pickup_order` | P1 |
-| `AllergenNotice` | Inserted by the binder, never chosen by the model | Allergen, Diet edges | — | — | P0 |
-| `GoalCTA` | Inserted by the binder from `steer` weights | UIComponent | — | `open_view:<component>` | P0 |
+| `Answer` | An owner-written FAQ answers the question | FAQ[1] | model picks the FAQ id | — | P0 |
+| `MenuList` | Dishes, diets, courses, named dishes | MenuItem[1..12] | model picks a filter; code builds the list | `add_to_cart` when the visitor wants to order | P0 |
+| `HoursCard` | Opening hours, "are you open on…" | HoursSpec, SpecialHours | code, from the date slot | — | P0 |
+| `BookingForm` | Wants a table | Service[reservations] | code, prefilled from slots | `submit_booking_request` | P0 |
+| `CateringQuoteForm` | Catering, large groups, events | Service[catering] | code, prefilled from slots | `submit_catering_quote` | P0 |
+| `AllergenNotice` | Any diet or allergen involvement; or the visitor names an allergen | Allergen[0..1] | binder inserts it; model may pick it with an allergen id | — | P0 |
+| `GoalCTA` | Binder inserts it from `steer` | UIComponent | binder | `open_view:<preset>` | P0 |
+| `LocationCard` | Address, directions, parking, contact | Location | code | `directions`, `call` | P1 |
+| `ItemCard` | One specific dish | MenuItem[1] | model picks the id | `add_to_cart` | P1 |
+| `ReviewHighlights` | Reputation | ReviewSummary | code | — | P1 |
+| `Cart` | Reviewing and submitting the cart | client state | client | `submit_pickup_order` | P1 |
+| `FormCard` | A generic lead form configured by `fields` (gift cards, private dining, a salon booking with a staff field) | Service[1] | model picks it | `submit_form` | P1 |
 
-Actions:
+`FormCard` is how new elements get created without new code: the agent proposes an entry with
+`primitive: "FormCard"` and a `fields` list (`name`, `type`, `label`, `required`); the owner
+approves; after publish the model can select it.
+
+Actions never call the model:
 
 | Action | Handler | Effect |
 |---|---|---|
-| `add_to_cart`, `remove_from_cart` | client | Updates widget cart state |
-| `open_view:<component>` | client → `GET /v1/view/{preset}` | Shows a preset surface, no model call |
-| `submit_booking_request` | server | Inserts `ops.lead` (`booking_request`); a request, not a confirmed reservation |
+| `add_to_cart` | client | Increments the cart count in the widget (P0: count only; reviewing and submitting the cart is P1) |
+| `open_view:<preset>` | client → `GET /v1/view/{preset}` | Shows a preset surface |
+| `submit_booking_request` | server | Inserts `ops.lead` (`booking_request`). A request, not a confirmed reservation. If the Service has `booking_url`, the form shows a link to the site's existing booking system instead |
 | `submit_catering_quote` | server | Inserts `ops.lead` (`catering_quote`) |
-| `submit_pickup_order` | server | Inserts `ops.lead` (`pickup_order`); no payment |
-| `directions`, `call` | client | Opens map or dialer link |
+| `submit_pickup_order`, `submit_form` | server | P1 |
+| `directions`, `call` | client | P1 |
 
-Navigation presets (the existing nav bar uses the same system with zero model calls):
+Presets are fixed surfaces served with no model call:
 
-| Nav | Preset surface |
-|---|---|
-| Menu | `MenuList` per section |
-| Booking | `BookingForm` |
-| Reviews | `ReviewHighlights` |
-| Contact | `LocationCard` + `HoursCard` |
+| Preset id | Surface | Build |
+|---|---|---|
+| `menu` | One `MenuList` per MenuSection (exempt from the 12-item and 2-view limits) | P0 |
+| `booking` | `BookingForm` | P0 |
+| `catering` | `CateringQuoteForm` | P0 |
+| `hours` | `HoursCard` for this week | P0 |
+| `contact` | `LocationCard` + `HoursCard` | P1 |
+| `reviews` | `ReviewHighlights` | P1 |
 
-## 7. Wire contracts
+Embed on the existing site:
 
-### 7.1 Selection (model output)
+```html
+<div id="cac-root"></div>
+<script src="https://BOX_HOST/embed.js" async></script>
+```
 
-The Serve API builds this JSON Schema per request and passes it to the local model as a
-structured-output constraint. `component` is limited to approved catalog entries and `node_ids`
-to the ids retrieved for this request, so the model cannot name anything else.
+- `embed.js` first fetches `/healthz` with a 1 s timeout. If the box is unreachable it does
+  nothing, and the site behaves exactly as before.
+- It injects `<iframe src="BOX_HOST/widget/" sandbox="allow-scripts allow-forms allow-same-origin">`
+  into `#cac-root`. If that element is absent it adds a launcher at the bottom right.
+- Existing nav links marked `data-cac-preset="menu|booking|catering|hours"` are intercepted:
+  the script posts `{ "type": "cac:view", "preset": "<id>" }` to the iframe. Without the
+  script the links work as normal links.
+- The widget keeps `session_id` (a UUID) and the history rail in `sessionStorage`. The rail is
+  client state: each entry is `{ surface_id, title, surface }`; clicking a chip re-renders the
+  stored surface with no request; the newest is labelled "Current".
+- Every string is rendered as text, never as HTML.
+
+## 8. Wire contracts
+
+### 8.1 Selection (model output)
+
+One constrained completion per uncached intent. The Serve API builds the JSON Schema per
+request from the approved catalog and the retrieved candidates, and passes it to the local
+model as a structured-output constraint. The model can only name components that are approved
+and ids that were retrieved.
 
 ```json
 {
-  "type": "object",
-  "additionalProperties": false,
-  "required": ["say", "views", "followups", "gap"],
-  "properties": {
-    "say": { "type": "string", "maxLength": 160 },
-    "views": {
-      "type": "array",
-      "maxItems": 3,
-      "items": {
-        "anyOf": [
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["component", "title", "node_ids", "actions"],
-            "properties": {
-              "component": { "const": "MenuList" },
-              "title": { "type": "string", "maxLength": 60 },
-              "node_ids": {
-                "type": "array", "minItems": 1, "maxItems": 12,
-                "items": { "enum": ["mi_mushroom_risotto", "mi_caprese", "mi_ribeye"] }
+  "anyOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "views"],
+      "properties": {
+        "kind": { "const": "answer" },
+        "views": {
+          "type": "array", "minItems": 1, "maxItems": 2,
+          "items": {
+            "anyOf": [
+              {
+                "type": "object", "additionalProperties": false,
+                "required": ["component", "diet", "section", "items", "order"],
+                "properties": {
+                  "component": { "const": "MenuList" },
+                  "diet": { "enum": ["diet_vegetarian", "diet_vegan", null] },
+                  "section": { "enum": ["sec_mains", "sec_desserts", null] },
+                  "items": {
+                    "type": "array", "maxItems": 6,
+                    "items": { "enum": ["mi_mushroom_risotto", "mi_caprese", "mi_ribeye"] }
+                  },
+                  "order": { "type": "boolean" }
+                }
               },
-              "actions": { "type": "array", "items": { "enum": ["add_to_cart"] } }
-            }
-          },
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["component", "params"],
-            "properties": {
-              "component": { "const": "HoursCard" },
-              "params": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": { "date": { "type": "string" } }
+              {
+                "type": "object", "additionalProperties": false,
+                "required": ["component", "faq"],
+                "properties": {
+                  "component": { "const": "Answer" },
+                  "faq": { "enum": ["faq_parking", "faq_gluten_free_pasta"] }
+                }
+              },
+              {
+                "type": "object", "additionalProperties": false,
+                "required": ["component", "allergen"],
+                "properties": {
+                  "component": { "const": "AllergenNotice" },
+                  "allergen": { "enum": ["alg_peanuts"] }
+                }
+              },
+              {
+                "type": "object", "additionalProperties": false,
+                "required": ["component"],
+                "properties": {
+                  "component": { "enum": ["HoursCard", "BookingForm", "CateringQuoteForm"] }
+                }
               }
-            }
+            ]
           }
-        ]
+        }
       }
     },
-    "followups": { "type": "array", "maxItems": 3, "items": { "type": "string", "maxLength": 40 } },
-    "gap": { "anyOf": [{ "type": "null" }, { "type": "string", "maxLength": 120 }] }
-  }
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "topic"],
+      "properties": {
+        "kind": { "const": "gap" },
+        "topic": { "type": "string", "maxLength": 60 }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": { "kind": { "const": "off_topic" } }
+    }
+  ]
 }
 ```
 
-Rules:
+Schema-building rules:
 
-- `say` is one friendly sentence. It must not contain prices, hours, or allergen statements;
-  those come from components. Agent channels do not use `say` for facts (see 7.2 `text`).
-- `gap` is set when the retrieved nodes cannot answer the question. The request is logged and
-  becomes a `KnowledgeGap`.
-- Length limits are re-checked by the validator, since not every decoding backend enforces them.
-- Target under 60 output tokens. Temperature 0. Thinking disabled.
+- The enums are filled from this request's candidates. A field whose candidate list is empty
+  gets `[null]` (diet, section) or is omitted with its variant (`Answer` with no FAQ retrieved,
+  `AllergenNotice` with no Allergen retrieved). Never emit an empty `enum`.
+- With zero candidates, only the `gap` and `off_topic` branches are offered.
+- `MenuList.order` is `true` only when the visitor wants to order (pick up, take out, add).
+  "Do you have vegetarian options?" is `false`: they want to know, not order.
+- `MenuList` filters combine: diet and section narrow the list; `items` names specific dishes.
+- `topic` is a short noun phrase for what could not be answered ("gluten-free pasta"). It is
+  the only free text the model writes, and it goes only to the owner side.
+- There is no allergen filter on `MenuList`. Allergen questions route to `AllergenNotice`.
+- Request settings: temperature 0, `max_tokens` 96, thinking disabled per request with
+  `chat_template_kwargs: {"enable_thinking": false}`, compact JSON (on vLLM set
+  `disable_any_whitespace` in the structured-output config). Confirm in the first 30 minutes
+  that the schema is still enforced with thinking off.
+- The system prompt is stable (catalog `use_when` lines first, then candidates as
+  `id | label | name | key facts`, then the visitor's text last) so prefix caching can hit.
+  Candidate lines carry only `name`, typed fields, and a capped description, inside a
+  delimited data block.
 
-Example for "vegetarian options":
+Examples:
 
-```json
-{
-  "say": "Here are our vegetarian dishes.",
-  "views": [
-    { "component": "MenuList", "title": "Vegetarian",
-      "node_ids": ["mi_mushroom_risotto", "mi_caprese"], "actions": [] }
-  ],
-  "followups": ["Show only desserts", "Book a table"],
-  "gap": null
-}
-```
+| Visitor types | Selection |
+|---|---|
+| vegetarian options | `{"kind":"answer","views":[{"component":"MenuList","diet":"diet_vegetarian","section":null,"items":[],"order":false}]}` |
+| I want to pick up something vegetarian | same with `"order":true` |
+| are you open on the 4th of July? | `{"kind":"answer","views":[{"component":"HoursCard"}]}` |
+| do you cater for 40? | `{"kind":"answer","views":[{"component":"CateringQuoteForm"}]}` |
+| do you have gluten-free pasta? (nothing verified) | `{"kind":"gap","topic":"gluten-free pasta"}` |
+| I'm allergic to peanuts | `{"kind":"answer","views":[{"component":"AllergenNotice","allergen":"alg_peanuts"}]}` |
+| tell me a joke | `{"kind":"off_topic"}` |
 
-### 7.2 Surface (Serve API response)
+### 8.2 Slots (code, before the model)
 
-The binder validates the selection, loads nodes from `kg_public`, computes derived values, adds
-system components, and returns a surface.
+Slots are extracted by code and never by the model: `date` (YYYY-MM-DD), `time` (HH:MM),
+`party_size`, `headcount`. A date with no year resolves to its next occurrence on or after
+today in `CAC_TZ`; on 3 October 2026, "the 4th of July" is 2027-07-04. Normalizing a text
+means lowercase, trim, collapse whitespace, strip punctuation.
+
+### 8.3 Binder (code, after the model)
+
+1. **Validate.** Reject a view whose component is not approved, whose ids were not candidates,
+   or whose node labels do not match `binds`. De-duplicate ids; keep the first view per
+   component. On failure retry the model once with the error; on a second failure, a timeout
+   (6 s), or more than `MODEL_MAX_INFLIGHT` calls in flight, return the `menu` preset with a
+   "we're busy" note and `meta.cache = "preset"`.
+2. **Gap.** For `kind: gap`, return the fixed gap surface: "We haven't confirmed that yet.
+   Please ask our staff." with the phone link from the Business node. Log `gap_topic`.
+3. **Off topic.** Return the fixed surface "I can help with our menu, hours, bookings and
+   catering." with default chips. Logged, never turned into a gap.
+4. **MenuList.** Build the list in code: items in the chosen section, items with an approved
+   `SUITABLE_FOR` edge to the chosen diet (owner-verified first), or the named items. Title
+   comes from the Diet or Section node's name. Cap at 12 with a "Full menu" link to the
+   `menu` preset. `order: true` adds the `add_to_cart` action.
+5. **Diet and allergen facts.** A diet badge is shown only for an owner-verified edge; an
+   unverified one renders "not verified, ask staff". An allergen never produces a list of safe
+   dishes: `AllergenNotice` with an allergen shows the fixed text "We cannot guarantee any dish
+   is free of {allergen}. Please tell your server about your allergy." and lists only dishes
+   with an owner-verified `CONTAINS_ALLERGEN` edge under "Confirmed to contain {allergen}".
+6. **Slots.** `HoursCard`, `BookingForm` and `CateringQuoteForm` take date, time, party size
+   and headcount from the slots. `HoursCard` computes open or closed for the date from
+   SpecialHours first, then HoursSpec.
+7. **Inserted components.** Add `AllergenNotice` (notice only) to any surface with a
+   `MenuList`. Add at most one `GoalCTA`, and only when no view on the surface already carries
+   a `steer` weight; use the highest-`steer` component and its `cta_label`. A catering question
+   therefore gets the catering form and no booking button; an hours question gets a booking
+   button.
+8. **Words.** `say` comes from the catalog entry's `say` template (for `HoursCard`, the
+   computed sentence; for `Answer`, nothing, because the FAQ answer is the content). Chips come
+   from the entry's fixed `chips`. Nothing shown to a visitor is model-written or copied from
+   another visitor.
+9. **Text for agents.** Fill `text` for every view from a per-component template so assistants
+   read graph facts.
+10. **Consistency.** Retrieval and binding run in one `REPEATABLE READ, READ ONLY` transaction
+    that also reads `graph_version`. The Serve API never caches the graph version or catalog in
+    process memory, so a publish takes effect on the next request with no restart.
+
+### 8.4 Surface (Serve API response)
 
 ```json
 {
   "surface_id": "s_01HZX",
-  "say": "Here are our vegetarian dishes.",
+  "kind": "answer",
+  "title": "Vegetarian",
+  "say": "Here is what matches.",
   "views": [
     {
       "id": "v1",
       "component": "MenuList",
-      "props": { "title": "Vegetarian" },
       "data": {
+        "title": "Vegetarian",
         "items": [
           { "id": "mi_mushroom_risotto", "name": "Mushroom risotto", "price": "$24.00",
             "description": "Arborio rice, wild mushrooms, parmesan",
             "badges": [{ "diet": "Vegetarian", "verified": true }] }
-        ]
+        ],
+        "more": null
       },
       "actions": [],
-      "text": "Vegetarian dishes: Mushroom risotto ($24.00)."
+      "text": "Vegetarian (confirmed by the restaurant): Mushroom risotto, $24.00."
     },
-    { "id": "v2", "component": "AllergenNotice", "props": {}, "data": { "unverified": [] },
-      "actions": [], "text": "Before ordering, tell your server about any food allergy." },
-    { "id": "v3", "component": "GoalCTA", "props": { "label": "Book a table" }, "data": {},
-      "actions": [{ "name": "open_view:BookingForm", "handler": "client" }], "text": "" }
+    { "id": "v2", "component": "AllergenNotice", "data": { "allergen": null, "contains": [] },
+      "actions": [],
+      "text": "Before placing your order, please inform your server if a person in your party has a food allergy." },
+    { "id": "v3", "component": "GoalCTA", "data": { "label": "Book a table" },
+      "actions": [{ "name": "open_view:booking", "handler": "client" }], "text": "" }
   ],
-  "followups": ["Show only desserts", "Book a table"],
+  "chips": ["What desserts do you have?", "Book a table"],
   "meta": { "cache": "miss", "latency_ms": 1840, "graph_version": 7, "model": "local" }
 }
 ```
 
-Binder rules:
+`title` is the history-rail label (at most 24 characters): the first view's title or the
+catalog entry's `rail_label`.
 
-1. Reject a view whose component is not approved, whose node ids were not in the candidate set,
-   or whose node labels do not match the component's `binds`. One retry with the error, then
-   fall back to `Answer`.
-2. Read data only through the `cac_serve` connection.
-3. Compute in code: open or closed for a date, price formatting, diet and allergen badges (only
-   from verified edges; otherwise "not verified, ask staff").
-4. Insert `AllergenNotice` whenever a view involves a Diet or Allergen. Insert at most one
-   `GoalCTA`, for the highest `steer` component not already shown.
-5. Fill `text` for every view from a per-component template. External agents receive this text,
-   so facts they read are graph facts, not model prose.
+Data shapes per component:
 
-### 7.3 Serve API
+| Component | `data` |
+|---|---|
+| `Answer` | `{ question, answer, verified, verified_at }`; `answer` is the FAQ text verbatim |
+| `MenuList` | `{ title, items: [{ id, name, price, description, badges: [{ diet, verified }] }], more }` |
+| `HoursCard` | `{ date, status: "open" \| "closed" \| null, opens, closes, note, week: [{ days, opens, closes }] }` |
+| `BookingForm` | `{ prefill: { date?, time?, party_size? }, booking_url? }` |
+| `CateringQuoteForm` | `{ prefill: { headcount?, date? }, min_headcount }` |
+| `AllergenNotice` | `{ allergen, contains: [{ id, name }] }` |
+| `GoalCTA` | `{ label }` |
+
+Form payloads (also the MCP tool inputs):
+
+| Action | Payload |
+|---|---|
+| `submit_booking_request` | `{ date, time, party_size (1..20), name, contact, notes? }` |
+| `submit_catering_quote` | `{ date, headcount, name, contact, notes? }` |
+
+A failed submit returns HTTP 422 `{ "ok": false, "errors": [{ "field", "message" }] }`. A date
+in the past is an error.
+
+### 8.5 Serve API
 
 | Method | Path | Body | Returns | Model call |
 |---|---|---|---|---|
-| POST | `/v1/intent` | `{ "text", "session_id", "channel", "context": { "surface_id"? } }` | Surface | only on cache miss |
+| GET | `/v1/bootstrap` | — | `{ business: { name, tagline }, theme, nav: [{ label, preset }], chips }` | never |
+| POST | `/v1/intent` | `{ "text", "session_id", "context"? }` | Surface | once, only on a cache miss |
 | GET | `/v1/view/{preset}` | — | Surface | never |
-| POST | `/v1/action` | `{ "name", "payload", "session_id" }` | `{ "ok", "surface"? }` | never |
-| GET | `/v1/metrics` | — | latency percentiles, cache hit rate, in-flight, graph version | never |
-| GET | `/healthz` | — | status of DB, model, embedder | never |
+| POST | `/v1/action` | `{ "name", "payload", "session_id", "component" }` | `{ "ok", "surface"? }` | never |
+| GET | `/v1/metrics` | — | see below | never |
+| GET | `/healthz` | — | status of database, model, embedder | never |
+| GET | `/embed.js`, `/widget/` | — | the embed script and the widget | never |
 
-Intent pipeline: normalize → extract slots (date, time, party size, diet keywords) → exact cache
-→ semantic cache (same `slots_key` required) → embed → top-k over `kg_public.node` → fixed
-expansion → build schema → one constrained model call → validate → bind → cache selection → log.
+Intent pipeline:
 
-Action payloads are untrusted input. Validate against the action's `payload_schema` and re-check
-that every referenced node id exists in `kg_public`.
+1. Validate: `text` is 1 to 300 characters, else HTTP 422.
+2. Normalize and extract slots.
+3. Exact cache lookup on (`normalized_hash`, `slots_key`, `graph_version`). On a hit, re-bind
+   the cached selection against the current graph.
+4. On a miss: retrieve, build the schema, make one model call, validate, bind, store the
+   selection.
+5. Log every request, including cache hits, with `kind` and `gap_topic`.
 
-### 7.4 Owner tools API (localhost only, `cac_owner`)
+Other rules:
 
-Used by the NemoClaw agents and the ingestion job. Never exposed through the tunnel.
+- The server sets `channel` from the caller (the widget is `web`; the MCP server identifies
+  itself with an internal header and is `mcp`). It is never taken from the request body.
+- Action payloads are untrusted. Validate them and re-check every referenced id in
+  `kg_public`. Lead submissions are limited to 3 per session per hour (10 per hour in total on
+  the `mcp` channel).
+- CORS allows only `CAC_ALLOWED_ORIGINS`.
+- `/v1/metrics` returns latency percentiles, cache hit rate, in-flight model calls, graph
+  version, leads captured, goal CTAs shown and clicked, and `model_host` (the resolved model
+  endpoint). Counters are kept in process, because `cac_serve` cannot read the log.
+- P1, refinement ("only desserts"): `context` carries the current `MenuList` filter; the model
+  returns a new filter and the binder intersects the two. Requests with `context` bypass the
+  cache.
+- P1, slot masking: selections with no ids (`HoursCard`, `BookingForm`, `CateringQuoteForm`)
+  are cached under a key with slot values masked, so "open on <any date>" costs one model call
+  ever.
 
-| Tool | Purpose |
-|---|---|
-| `list_gaps` | Open knowledge gaps, grouped, with counts and example questions |
-| `upsert_draft` | Create or update a draft node or edge (agent proposals) |
-| `record_owner_answer` | Write an owner-verified node or edge from an owner reply |
-| `approve` / `reject` | Change status of a draft or proposal |
-| `publish` | Call `kg.publish()` and return the new graph version |
-| `top_intents` | Aggregated intent counts for the digest and cache pre-warming |
+### 8.6 Owner tools API
 
-### 7.5 MCP server (external assistants)
+REST on port 8081, `Authorization: Bearer $OWNER_TOOLS_TOKEN`, bound to the address the
+sandbox can reach and to nothing public. The agent calls it through one OpenClaw skill. If
+plain HTTP from the sandbox is blocked, the alternative is to expose the same endpoints as a
+Streamable HTTP MCP server registered with NemoClaw; settle this in the first 30 minutes.
 
-Stateless Streamable HTTP at `POST /mcp`, connecting as `cac_serve` through the Serve API.
+| Endpoint | Input | Effect | Agent may call |
+|---|---|---|---|
+| `GET /owner/gaps?state=open` | — | Folds new `ops.intent_log` rows with `kind = 'gap'` into KnowledgeGap nodes keyed on the lowercased topic (using the watermark in `ops.sync_state`), then returns `[{ gap_id, topic, count }]` for gaps seen in at least `GAP_ASK_MIN_SESSIONS` sessions. Never returns visitor text or session ids | yes |
+| `POST /owner/gaps/{id}/asked` | — | Marks the gap `asked`. Only one gap may be `asked` at a time, so an owner reply maps to exactly one question | yes |
+| `POST /owner/answers` | `{ gap_id, answer_text }` (at most 400 characters) | Accepted only for a gap in state `asked`. Creates an FAQ node (`question` = a templated question from the topic, `answer` = the owner's words verbatim) with `visibility = public`, `status = approved`, `source_type = owner`, `verified_by_owner = true`, `verified_at = now()`; builds `search_text`; embeds it; adds `ANSWERS` and `ABOUT` edges; marks the gap `answered` | yes |
+| `POST /owner/special-hours` | `{ date, closed, opens?, closes?, note? }` | Creates an owner-verified SpecialHours node, so "we're closed on the 24th" becomes data that code answers from | yes |
+| `POST /owner/publish` | — | Calls `kg.publish()`, then replays the top 20 intents and the demo intent list through `/v1/intent` with channel `prewarm`. Returns `{ graph_version }` | yes |
+| `GET /owner/digest` | — | `{ questions_today, top_topics, open_gaps, new_leads: [{ kind, count }] }`: counts only, no customer details | yes |
+| `GET /owner/inbox` | — | Read-only HTML page for the owner: new leads with details, open gaps with example questions. For a person, not the agent | no |
 
-| Tool | Input | Output |
-|---|---|---|
-| `get_business_profile` | — | Name, cuisine, address, hours summary, price range, services |
-| `ask_restaurant` | `{ "question": string }` | `content`: joined view `text`; `structuredContent`: Surface; `_meta.ui.resourceUri`: `ui://cac/surface.html` |
-| `request_booking` | `{ "date", "time", "party_size", "name", "contact", "notes"? }` | Lead id and "request received, the restaurant will confirm" |
-| `request_catering_quote` | `{ "date", "headcount", "name", "contact", "notes"? }` | Lead id and next step |
+What the agent cannot do, by construction: read visitor text or lead details, create any node
+other than an FAQ or SpecialHours, verify a diet or allergen edge, approve a draft, or change
+visibility. The owner channel accepts messages only from `OWNER_CHANNEL_USER_ID`. The question
+sent to the owner is a code template around the topic: "{count} visitors asked about {topic}.
+I have nothing confirmed. What should I tell them?"
 
-The `ui://cac/surface.html` resource is the same React component bundle as the website widget,
-built as a single HTML file with no external origins.
+P1 endpoints: `POST /owner/drafts` (always private, draft, `source_type = agent`),
+`POST /owner/proposals` (a `FormCard` entry for owner approval), batch verification of diet
+tags, and owner-initiated facts. Before any of these publishes, the API echoes the final text
+to the owner for a yes.
 
-### 7.6 A2A agent card (secondary)
+### 8.7 MCP server
 
-Serve a card at `/.well-known/agent-card.json` generated with the A2A SDK, advertising the same
-four skills. Do not hand-write the card and do not publish one that points at nothing.
+Stateless Streamable HTTP at `POST /mcp`. It holds no database credentials: every tool is a
+call to the Serve API on localhost. Only `/mcp` is routed through the tunnel.
 
-## 8. Owner goals (seed format)
+Pins from Anthropic's quickstart: `@modelcontextprotocol/ext-apps@1.7.5` and
+`@modelcontextprotocol/sdk@1.30.1`. Do not install ext-apps 2.x. Add the tunnel hostname to
+`allowedHosts`, or requests fail with 403. On a Cloudflare Quick Tunnel set
+`enableJsonResponse: true`; prefer a tunnel with a stable hostname, because the connector is
+registered by URL.
+
+| Tool | Input | Output | Notes |
+|---|---|---|---|
+| `get_business_profile` | — | Name, cuisine, address, hours summary, price range, services (from `/v1/bootstrap` and the `hours` preset) | |
+| `ask_restaurant` | `{ "question" }` | `content`: the views' `text` joined; `structuredContent`: the Surface | Declared with `_meta: { ui: { resourceUri: "ui://cac/surface.html" } }` on the tool definition. Description: "Ask <restaurant name> (Cambridge, MA) about its menu, dietary options, hours, bookings or catering. Returns facts confirmed by the restaurant and an interactive card." |
+| `get_view` | `{ "preset" }` | Surface | App-only; lets buttons in the component open presets |
+| `request_booking` | booking payload (8.4) | Lead id and "request received; the restaurant will confirm" | |
+| `request_catering_quote` | catering payload (8.4) | Lead id and next step | |
+
+The `ui://cac/surface.html` resource (MIME `text/html;profile=mcp-app`) is the widget bundle
+built as a single HTML file with no external origins. The widget takes a `transport` with
+`intent(text)`, `view(preset)` and `action(name, payload)`: the web build implements it with
+`fetch`; the MCP App build implements it with host tool calls (`ask_restaurant`, `get_view`,
+`request_booking`, `request_catering_quote`).
+
+### 8.8 A2A agent card (P2)
+
+Serve a card at `/.well-known/agent-card.json` generated with the A2A SDK, advertising the
+same skills. Do not hand-write the card and do not publish one that points at nothing.
+
+## 9. Seed
+
+One seed file describes the fictional demo restaurant and drives both the graph and the static
+demo site, so they cannot drift. Loading it writes approved public nodes with
+`source_type = seed`.
 
 ```yaml
-business_id: biz_demo
+business:
+  id: biz_demo
+  name: <restaurant name>
+  timezone: America/New_York
+  cuisine: [Italian]
+  phone: "+1 617 555 0100"
+sections:
+  - id: sec_mains
+    name: Mains
+    items:
+      - { id: mi_mushroom_risotto, name: Mushroom risotto, price_cents: 2400,
+          description: "Arborio rice, wild mushrooms, parmesan" }
+      - { id: mi_ribeye, name: Ribeye, price_cents: 4200, description: "12 oz, herb butter" }
+hours:
+  - { days: [tue, wed, thu, fri, sat, sun], opens: "11:00", closes: "22:00" }
+special_hours:
+  - { id: sh_2027_07_04, date: 2027-07-04, closed: true, note: Independence Day }
+  - { id: sh_2026_11_26, date: 2026-11-26, closed: true, note: Thanksgiving }
+services:
+  - { id: svc_reservations, kind: reservations }
+  - { id: svc_catering, kind: catering, min_headcount: 15 }
+verified_diets:            # owner-verified SUITABLE_FOR edges for the demo restaurant
+  diet_vegetarian: [mi_mushroom_risotto]
+unverified_diets:          # approved but not verified: must render "not verified, ask staff"
+  diet_vegetarian: [mi_caprese]
 goals:
-  - id: goal_bookings
-    statement: Fill tables on weeknights
-    priority: 3
-    advanced_by: [BookingForm]
-  - id: goal_catering
-    statement: Sign up catering clients
-    priority: 2
-    advanced_by: [CateringQuoteForm]
+  - { id: goal_bookings, statement: Fill tables on weeknights, priority: 5,
+      advanced_by: [BookingForm] }
+  - { id: goal_catering, statement: Sign up catering clients, priority: 4,
+      advanced_by: [CateringQuoteForm] }
+private:
+  customers:
+    - { id: cust_canary, name: "Zephyrine Quillfeather", contact: "canary@example.invalid" }
 ```
 
-Loading this file creates private `Goal` nodes and `ADVANCES` edges. Publishing turns them into
-`steer` weights on the components; the goal text itself never leaves `kg`.
+The loader writes Goal nodes and `ADVANCES` edges as approved and owner-verified, and resolves
+`advanced_by` names to `ui_<component>` ids. Goal text never leaves `kg`.
 
-## 9. Test fixtures the build must include
+## 10. Fixtures and tests
 
-| Fixture | Purpose |
+| Fixture or test | Pass condition |
 |---|---|
-| A private `Customer` node with a unique canary name | Leak test: no endpoint may ever return the canary string |
-| A MenuItem with an unverified `SUITABLE_FOR` edge | Must render "not verified, ask staff", never a badge |
-| A `SpecialHours` node for a holiday | "Are you open on July 4th?" is answered by code |
-| An intent with no supporting nodes (for example gluten-free pasta) | Must produce a `gap`, then a `KnowledgeGap` |
-| A `Goal` with priority 3 on `BookingForm` | Hours question must come back with a booking CTA |
+| 30 intents with their expected component and filter | 100% schema-valid; at least 27 of 30 correct components |
+| One golden Surface JSON per component | Widget renders each; committed before the pipeline exists so both sides can build in parallel |
+| Permission check, run as `cac_serve` | `SELECT` on `kg.node`, `ops.lead` and `ops.intent_log` each return "permission denied" |
+| Canary script | Put the canary name in a Customer node, a lead payload, and an intent log row. Send the 30 intents plus 10 extraction prompts to `/v1/intent`, every preset, `/v1/metrics`, and each MCP tool. Fail if any response contains the canary |
+| Unverified diet edge (`mi_caprese`) | Renders "not verified, ask staff", never a badge |
+| "nut-free dishes", "I'm allergic to peanuts" | No `MenuList` of safe dishes; `AllergenNotice` only |
+| Date resolver pinned to 2026-10-03 | "4th of July" → 2027-07-04 (closed); "Thanksgiving" → 2026-11-26 (closed) |
+| Gap loop | An unknown question logs a gap; after `POST /owner/answers` and publish, the same question returns `Answer` with `verified: true`, with no restart |
+| Goal steer | Hours question returns a booking CTA; catering question returns the catering form and no booking CTA |
+| Private prop on a public node | A `supplier` prop on a MenuItem does not appear in `kg_public` |
+| Two-friends question through MCP | At least one owner-verified vegetarian main, one meat main, and a booking CTA |
