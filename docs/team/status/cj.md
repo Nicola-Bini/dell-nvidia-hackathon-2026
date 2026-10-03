@@ -7,7 +7,7 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 | wp1 Widget shell | merged in this PR | (this PR) | `npm test` in `apps/widget` -> 21 passed (every file in `fixtures/surfaces/` renders); `npm run build` writes `dist/` (14:53 ET) |
 | wp2 Components | merged in this PR | (this PR) | `npm test` in `apps/widget` -> 46 passed: a test per component on its golden view, "an unverified badge never shows the verified mark", XSS strings render as text (15:05 ET) |
 | wp3 Demo site and embed | merged in this PR | (this PR) | `npm test` in `apps/widget` -> 53 passed (embed: box unreachable or slow -> no iframe and links still work; a preset link posts `cac:view`); `npm test` in `apps/demo-site` -> 5 passed (15:20 ET) |
-| wp4 Interaction | not started | | |
+| wp4 Interaction | merged in this PR | (this PR) | `npm test` in `apps/widget` -> 62 passed, including mock-transport submit success, submit 422 (field errors), cart count, goal button `?src=cta`, `cac:view` from the parent, `session_id` in sessionStorage (15:27 ET) |
 | wp5 Overlay and states | not started | | |
 | wp6 MCP build, history rail (P1) | not started | | |
 

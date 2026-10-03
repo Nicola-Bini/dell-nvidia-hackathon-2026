@@ -26,7 +26,10 @@ function withPrefill(surface: Surface, preset: string): Surface {
 }
 
 const BOOTSTRAP: Bootstrap = {
-  business: { name: "The Kenmore", tagline: "We are a local's establishment focusing on craft beer and craft ingredients." },
+  business: {
+    name: "The Kenmore",
+    tagline: "We are a local's establishment focusing on craft beer and craft ingredients.",
+  },
   theme: {
     background: "#111111",
     text: "#FFFFFF",
