@@ -155,5 +155,8 @@ def outcomes(intents_client, intents) -> dict[str, object]:
     from cac_serve.services import pipeline
 
     settings = get_settings()
+    # Every intent must reach the model here: a cache hit carries no schema to validate.
+    with psycopg.connect(settings.owner_database_url) as conn:
+        conn.execute("DELETE FROM ops.intent_cache")
     today = pipeline.business_today(settings)
     return {row["text"]: pipeline.answer(row["text"], today, settings)[0] for row in intents}
