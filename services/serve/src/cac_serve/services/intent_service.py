@@ -1,10 +1,10 @@
-"""POST /v1/intent. STUB (wp2): golden surfaces by exact text; the pipeline replaces the body."""
+"""POST /v1/intent: validate the text, then run the pipeline (SCHEMA 8.5)."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from cac_serve.services.golden import load_golden, load_index
+from cac_serve.services import pipeline
 
 
 class InvalidText(ValueError):
@@ -22,12 +22,5 @@ def clean_text(text: str, max_chars: int) -> str:
 def handle_intent(
     text: str, session_id: str, channel: str, context: dict[str, Any] | None = None
 ) -> dict:
-    """Return the Surface for one visitor intent.
-
-    STUB: a text listed in fixtures/surfaces/index.json gets its golden surface verbatim;
-    everything else gets the off-topic surface. No model call, no log row yet.
-    """
-    filename = load_index().get(text)
-    if filename is None:
-        return load_golden("off_topic")
-    return load_golden(filename.removesuffix(".json"))
+    """Return the Surface for one visitor intent. `context` (refinement) is P1 and ignored."""
+    return pipeline.run_intent(text, session_id, channel).surface

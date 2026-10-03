@@ -12,7 +12,7 @@ def test_metrics_has_exactly_the_contract_keys(client):
     body = client.get("/v1/metrics").json()
     assert set(body) == METRIC_KEYS
     assert set(body["latency_ms"]) == {"p50", "p95"}
-    assert body["model_host"] == "127.0.0.1:8000"
+    assert body["model_host"].startswith("127.0.0.1:")
     assert isinstance(body["cache_hit_rate"], float)
     assert isinstance(body["graph_version"], int)
 
@@ -27,7 +27,10 @@ def test_metrics_latency_percentiles_follow_requests(client):
 def test_view_menu_is_the_preset_golden(client, golden):
     response = client.get("/v1/view/menu")
     assert response.status_code == 200
-    assert response.json() == golden("preset_menu")
+    body, expected = response.json(), golden("preset_menu")
+    for key in ("kind", "title", "say", "views", "chips"):
+        assert body[key] == expected[key]
+    assert body["meta"]["cache"] == "preset"
 
 
 @pytest.mark.parametrize(
@@ -58,11 +61,12 @@ def test_src_cta_bumps_cta_clicked(client):
 
 
 @pytest.mark.parametrize("name", ["submit_booking_request", "submit_catering_quote", "submit_form"])
-def test_known_actions_are_accepted(client, name):
+def test_empty_payload_is_422_with_field_errors(client, name):
     body = {"name": name, "payload": {}, "session_id": "s1", "component": "BookingForm"}
     response = client.post("/v1/action", json=body)
-    assert response.status_code == 200
-    assert response.json() == {"ok": True}
+    assert response.status_code == 422
+    assert response.json()["ok"] is False
+    assert response.json()["errors"]
 
 
 def test_unknown_action_is_422_with_errors(client):

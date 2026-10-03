@@ -122,6 +122,29 @@ def intents_client(model_base_url):
 
 
 @pytest.fixture(scope="session")
+def golden():
+    """Loader for a golden Surface by file stem, e.g. golden("off_topic")."""
+    return load_golden
+
+
+@pytest.fixture()
+def client(model_base_url, monkeypatch):
+    """A fresh app per test: dev database, the fake model, zeroed counters, pinned date."""
+    from cac_serve.infra.metrics import metrics
+    from cac_serve.infra.rate_limit import lead_limiter
+    from cac_serve.main import create_app
+
+    monkeypatch.setenv("LLM_BASE_URL", model_base_url)
+    monkeypatch.setenv("CAC_TODAY", "2026-10-03")
+    get_settings.cache_clear()
+    metrics.reset()
+    lead_limiter.reset()
+    with TestClient(create_app(get_settings())) as test_client:
+        yield test_client
+    get_settings.cache_clear()
+
+
+@pytest.fixture(scope="session")
 def outcomes(intents_client, intents) -> dict[str, object]:
     """Each intent run once through the pipeline: text -> Outcome."""
     from cac_serve.services import pipeline

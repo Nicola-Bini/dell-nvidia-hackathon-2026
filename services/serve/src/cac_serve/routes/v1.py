@@ -67,7 +67,8 @@ def action(body: ActionBody, request: Request) -> dict | JSONResponse:
     try:
         return handle_action(body.name, body.payload, body.session_id, body.component, channel)
     except ActionRejected as exc:
-        return JSONResponse(status_code=422, content={"ok": False, "errors": exc.errors})
+        content = {"ok": False, "errors": exc.errors}
+        return JSONResponse(status_code=exc.status_code, content=content)
 
 
 @router.get("/metrics")

@@ -15,6 +15,7 @@ from psycopg_pool import PoolTimeout
 from cac_serve.infra import db
 from cac_serve.infra.startup_checks import assert_local
 from cac_serve.routes import health, static, v1
+from cac_serve.services.pipeline import GraphNotPublished
 
 
 def _assert_models_are_local(settings: Settings) -> None:
@@ -25,6 +26,10 @@ def _assert_models_are_local(settings: Settings) -> None:
 
 def _database_unavailable(request: Request, exc: Exception) -> JSONResponse:
     return JSONResponse(status_code=503, content={"detail": "database unavailable"})
+
+
+def _graph_not_published(request: Request, exc: Exception) -> JSONResponse:
+    return JSONResponse(status_code=503, content={"detail": "graph not published"})
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -50,6 +55,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.add_exception_handler(psycopg.Error, _database_unavailable)
     app.add_exception_handler(PoolTimeout, _database_unavailable)
+    app.add_exception_handler(GraphNotPublished, _graph_not_published)
     app.include_router(v1.router)
     app.include_router(health.router)
     app.include_router(static.router)

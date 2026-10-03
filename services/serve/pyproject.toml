@@ -40,3 +40,9 @@ markers = ["intents: the 30 fixture intents through the whole pipeline (needs fa
 
 [tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "C901", "PLR0913"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 8
