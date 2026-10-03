@@ -7,7 +7,8 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 | wp1 | merged | [#3](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/3) | `box/checks.sh` -> ALL CHECKS PASSED (embedder WARN, decision below) |
 | wp2 | merged | [#4](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/4) | `uv run bench/selection_bench.py` -> median 0.25 s, p95 0.30 s at 1; 0.96/1.07 at 4 |
 | wp3 | blocked | — | needs the NemoClaw lock (interactive onboard running, see Blocked on) |
-| wp4 | built against mock, PR in this branch | — | `python3 -m unittest discover -s agent/tests` -> 3 tests OK on the mock; real je API not merged yet |
+| wp4 | built against mock | [#7](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/7) | `python3 -m unittest discover -s agent/tests` -> 3 OK on the mock; real je API not merged yet |
+| wp5 | partial: scripts written | PR in this branch | `box/up.sh` -> ALL UP with mock owner API (postgres, model, owner, serve gated). Sandbox parts (`box/egress_demo.sh`, `box/recover.sh`, policy apply) unproven: need the NemoClaw lock |
 
 ## Measured numbers
 
