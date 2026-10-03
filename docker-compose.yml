@@ -14,6 +14,7 @@ services:
     volumes:
       - cac_pgdata:/var/lib/postgresql/data
       - ./db/schema.sql:/schema/schema.sql:ro
+      - ./db/search.sql:/schema/search.sql:ro
       - ./db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d cac"]
