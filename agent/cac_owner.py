@@ -13,6 +13,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+import cac_grow
+
 PLANS = Path(__file__).resolve().parent / "plans"
 ASK_TEMPLATE = ("{count} visitors asked about {topic}. I have nothing confirmed. "
                 "What should I tell them?")
@@ -53,10 +55,13 @@ def planned_topics() -> set[str]:
 
 def ask_top_gap(api: OwnerApi) -> dict:
     """Move 1: put the most-asked open gap to the owner. Returns the message to send.
-    Gaps that a plan covers (a missing type, not a missing fact) are left to move 2."""
+    Gaps that a plan covers, or that the agent already built something for (a missing type,
+    not a missing fact), are left to moves 2 and 3."""
     gaps = api.call("GET", "/owner/gaps?state=open")
     if isinstance(gaps, list):
-        gaps = [g for g in gaps if g["topic"].lower() not in planned_topics()]
+        changes = api.call("GET", "/owner/changes")
+        built = cac_grow.covered_topics(changes if isinstance(changes, list) else [])
+        gaps = [g for g in gaps if g["topic"].lower() not in planned_topics() | built]
     if not isinstance(gaps, list) or not gaps:
         return {"asked": False, "reason": "no open gaps"}
     top = max(gaps, key=lambda g: g["count"])
@@ -96,8 +101,10 @@ def propose_plan(api: OwnerApi, plan_path: str, topic: str) -> dict:
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="cac_owner")
     sub = p.add_subparsers(dest="cmd", required=True)
-    for name in ("digest", "topics", "gaps", "schema", "ask-top-gap", "publish"):
+    for name in ("digest", "topics", "gaps", "schema", "ask-top-gap", "publish", "next-task"):
         sub.add_parser(name)
+    sub.add_parser("nodes").add_argument("label")
+    sub.add_parser("apply").add_argument("source", help="a file, - for stdin, or the JSON")
     s = sub.add_parser("changes")
     s.add_argument("--state", default="")
     s = sub.add_parser("answer")
@@ -134,6 +141,27 @@ def post_change(api: OwnerApi, a: argparse.Namespace) -> dict:
         "reason": a.reason, "evidence": a.evidence})
 
 
+def apply_source(api: OwnerApi, source: str) -> dict:
+    """Move 3: post the list of changes the model wrote for the task from `next-task`."""
+    inline = source.lstrip().startswith(("[", "`"))
+    if source == "-":
+        text = sys.stdin.read()
+    elif inline or not Path(source).is_file():
+        text = source
+    else:
+        text = Path(source).read_text()
+        Path(source).unlink()  # one use: a stale file must not be posted on a later turn
+    changes = cac_grow.parse_changes(text)
+    if changes is None:
+        return {"error": "apply needs one JSON list of changes", "summary": "nothing new"}
+    return cac_grow.apply_changes(api, changes)
+
+
+def nodes_view(api: OwnerApi, label: str) -> dict:
+    nodes, edges = cac_grow.nodes_of(api, label)
+    return {"nodes": [cac_grow.node_view(n, edges) for n in nodes.values()]}
+
+
 def main(argv: list[str]) -> int:
     a = build_parser().parse_args(argv)
     load_agent_env()
@@ -148,6 +176,9 @@ def main(argv: list[str]) -> int:
         "changes": lambda: api.call(
             "GET", "/owner/changes" + (f"?state={a.state}" if a.state else "")),
         "gaps": lambda: api.call("GET", "/owner/gaps?state=open"),
+        "next-task": lambda: cac_grow.next_task(api),
+        "apply": lambda: apply_source(api, a.source),
+        "nodes": lambda: nodes_view(api, a.label),
     }
     handler = handlers.get(a.cmd, lambda: api.call("GET", f"/owner/{a.cmd}"))
     print(json.dumps(handler()))

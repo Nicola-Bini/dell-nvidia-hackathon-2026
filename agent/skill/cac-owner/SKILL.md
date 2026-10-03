@@ -1,6 +1,6 @@
 ---
 name: cac-owner
-description: Read what visitors ask the business, ask the owner about the top unanswered question, record the owner's reply, and propose graph changes. Use on every heartbeat and when the owner messages.
+description: Read what visitors ask the business and what its knowledge graph holds, ask the owner about the top unanswered question, record the owner's reply, and grow the graph (classify and link nodes, add types, add interface elements). Use on every heartbeat and when the owner messages.
 ---
 
 # cac-owner
@@ -16,6 +16,9 @@ Run `python3 /sandbox/agent/cac_owner.py <command>` (it prints one JSON document
 | `answer <gap_id> "<owner's exact words>"` | Records the reply as a verified FAQ, then publishes |
 | `special-hours <date> [--closed] [--opens HH:MM --closes HH:MM] [--note ..]` | Owner said "we're closed on the 24th" |
 | `propose <plan.json> --topic "<topic>"` | Posts the plan's changes with reason and evidence from the topic's count |
+| `next-task` | Move 3: one task from the live graph (`classify`, `topics` or `invent`) with its `how`, context and `shapes` |
+| `apply <file \| - \| JSON>` | Move 3: posts your JSON list of changes for that task; returns counts and a `summary` for the owner |
+| `nodes <Type>` | Read-only: every node of a type with its props and links |
 | `change <action> --target JSON --after JSON --reason .. --evidence ..` | One change |
 | `publish` | Publish and pre-warm |
 
