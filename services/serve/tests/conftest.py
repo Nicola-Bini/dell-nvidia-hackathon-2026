@@ -38,6 +38,14 @@ def settings() -> Settings:
     return get_settings()
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _empty_intent_cache(settings: Settings):
+    """Selections cached by an earlier run (another model, an older prompt) must not answer
+    this run's requests. cac_serve cannot delete, so this connects as the owner."""
+    with psycopg.connect(settings.owner_database_url) as conn:
+        conn.execute("DELETE FROM ops.intent_cache")
+
+
 @pytest.fixture()
 def serve_conn(settings: Settings):
     with psycopg.connect(settings.serve_database_url) as conn:
@@ -109,9 +117,6 @@ def intents_client(model_base_url):
     os.environ["LLM_BASE_URL"] = model_base_url
     os.environ["CAC_TODAY"] = "2026-10-03"
     get_settings.cache_clear()
-    settings = get_settings()
-    with psycopg.connect(settings.owner_database_url) as conn:
-        conn.execute("DELETE FROM ops.intent_cache")
     from cac_serve.main import create_app
 
     with TestClient(create_app()) as test_client:

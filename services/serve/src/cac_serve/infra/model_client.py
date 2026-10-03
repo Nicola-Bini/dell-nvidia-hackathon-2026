@@ -51,6 +51,7 @@ def request_body(model: str, messages: list[dict], schema: dict) -> dict:
         "messages": messages,
         "temperature": 0,
         "max_tokens": MAX_TOKENS,
+        "stop": ["\n\n"],  # a finished JSON object is never followed by a blank line
         "response_format": {
             "type": "json_schema",
             "json_schema": {"name": "selection", "schema": schema, "strict": True},

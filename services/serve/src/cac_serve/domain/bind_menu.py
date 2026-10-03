@@ -120,6 +120,16 @@ def _unknown_filter(graph: Graph, sel: dict) -> bool:
 
 
 def _listing(graph: Graph, sel: dict, rail_label: str) -> _Listing | None:
+    """Filters intersect. Named items that all fall outside the chosen diet or section are
+    ignored, so the diet or section list is shown rather than nothing."""
+    listing = _filtered(graph, sel, rail_label)
+    narrowed = sel.get("items") and (sel.get("diet") or sel.get("section"))
+    if listing is not None and not listing.items and narrowed:
+        return _filtered(graph, {**sel, "items": []}, rail_label)
+    return listing
+
+
+def _filtered(graph: Graph, sel: dict, rail_label: str) -> _Listing | None:
     if _unknown_filter(graph, sel):
         return None  # an unknown filter never widens the list
     diet = _typed(graph, sel.get("diet"), "Diet")
