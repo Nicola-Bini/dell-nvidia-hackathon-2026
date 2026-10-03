@@ -4,7 +4,7 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 
 | Package | State | PR | Proof and result |
 |---|---|---|---|
-| wp1 Graph write side | merged | PR_WP1 | `make db-reset seed && uv run --project tests pytest tests/graph` -> 79 passed; `make db-check` ok; `make fixtures-check` OK (14:47 ET) |
+| wp1 Graph write side | merged | [#5](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/5) | `make db-reset seed && uv run --project tests pytest tests/graph` -> 79 passed; `make db-check` ok; `make fixtures-check` OK (14:47 ET) |
 | wp2 Serve API stub and fake model | building | | |
 | wp3 Pipeline, front half | building | | |
 | wp4 Pipeline, back half | building | | |
