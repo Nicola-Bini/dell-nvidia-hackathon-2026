@@ -5,7 +5,7 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 | Package | State | PR | Proof and result |
 |---|---|---|---|
 | wp1 Graph write side | merged | [#5](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/5) | `make db-reset seed && uv run --project tests pytest tests/graph` -> 79 passed; `make db-check` ok; `make fixtures-check` OK (14:47 ET) |
-| wp2 Serve API stub and fake model | building | | |
+| wp2 Serve API stub and fake model | merged | [#8](https://github.com/Nicola-Bini/dell-nvidia-hackathon-2026/pull/8) | `cd services/serve && uv run pytest tests/api` -> 75 passed (every `index.json` entry returns its golden; start-up refuses a non-local `LLM_BASE_URL`); `uv run --with pytest --with jsonschema pytest tools/fake_llm` -> 48 passed (14:52 ET) |
 | wp3 Pipeline, front half | building | | |
 | wp4 Pipeline, back half | building | | |
 | wp5 Actions and presets | tests written | | |
@@ -22,6 +22,16 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
   `graph.publish(conn, business_id)`, `search_text.build_search_text(...)`,
   `embedding.embed(texts)` (None when `EMBED_BASE_URL` is empty).
 - Root tests and scripts run in the `tests/` uv project: `uv run --project tests ...`.
+- Serve API stub: `make serve` (port `SERVE_PORT`, default 8080; the box uses 8082). All
+  SCHEMA 8.5 routes answer. `/v1/intent` returns the golden surface for the 13 texts in
+  `fixtures/surfaces/index.json` and the off-topic surface otherwise; `/v1/view/{menu,
+  booking,catering,hours}` return preset surfaces; `/v1/bootstrap`, `/healthz` and
+  `/v1/metrics` are real; `/v1/action` accepts the three submits (no lead stored until
+  wp5). `/widget/`, `/embed.js` and `/site/` are served from `apps/*/dist` as soon as the
+  directory exists, with no restart.
+- `make fake-llm`: OpenAI-compatible stand-in on `127.0.0.1:8000` (`/v1/models`,
+  `/v1/chat/completions`, `/stats`, `/reset`). Other port: `uv run tools/fake_llm/server.py
+  --port N`.
 
 ## Measured numbers
 
@@ -44,6 +54,13 @@ Updated by this lane's agent in every PR. Format: AGENTS.md section 9.
 - 14:45 Imports do not rely on editable-install `.pth` files (hidden-flag problem on macOS
   under `~/Desktop`): pytest `pythonpath` and a `sys.path` line in scripts.
 - 14:46 Seed re-runs upsert and never delete; an owner verification survives a re-run.
+- 14:50 `fixtures/surfaces/gift_cards.json`: the FormCard `text` was hand-written prose no
+  template can produce; it is now the template output ("Request a gift card: Your name,
+  Email or phone, Amount."). Only the assistant-facing `text` changed, not `data`.
+- 14:50 `X-CAC-Channel` is ignored when a forwarding header is present, so a request through
+  a tunnel or proxy on the box can never pass as `mcp` or `prewarm`.
+- 14:50 A database outage answers HTTP 503 `{"detail": "database unavailable"}`; an
+  unpublished graph answers 503 on `/v1/bootstrap` and `/v1/intent`.
 
 ## Requests handled
 

@@ -28,7 +28,14 @@ package, a gate (17:00, 18:30) or the freeze (20:00) in a fresh session.
 make hooks env        # lane guard on push; .env from .env.example
 make db-up db-check   # Postgres + pgvector on 127.0.0.1:54320; privacy check
 make fixtures-check   # seed and golden fixtures agree
+make seed             # load The Kenmore into the graph and publish (safe to re-run)
+make fake-llm         # laptops only: stand-in model on 127.0.0.1:8000 (own terminal)
+make serve            # Serve API on SERVE_PORT (8080; the box uses 8082)
 ```
+
+Proofs: `uv run --project tests pytest tests/graph` (graph), `cd services/serve && uv run
+pytest` (Serve API; `-m intents` for the 30 intents), `uv run --project tests python
+scripts/permission_check.py` and `scripts/canary.py` (privacy; the canary needs `make serve`).
 
 Needs Docker, `uv`, Node 22 and the GitHub CLI.
 
