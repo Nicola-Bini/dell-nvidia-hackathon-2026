@@ -3,18 +3,13 @@
 A local agent a small business owns. It turns the business's website into a knowledge
 graph and serves it two ways: as an interface to visitors, and as tools to AI assistants.
 Everything runs on one Dell Pro Max with GB10: the database, the model, the agent, the
-APIs. No cloud model, no cloud deployment. Built at the Dell x NVIDIA AI Hackathon, Boston,
-3 October 2026, by four people building in parallel.
+APIs. No cloud model, no cloud deployment. Built for the Dell x NVIDIA AI Hackathon, Boston,
+3 October 2026.
 
 The demo business is **The Kenmore**, a restaurant at 476 Commonwealth Avenue, Boston.
 
-- Product: [docs/PRD.md](docs/PRD.md)
-- Contracts: [docs/SCHEMA.md](docs/SCHEMA.md)
-- Rules for coding agents: [AGENTS.md](AGENTS.md)
-- Who owns what: [docs/team/OWNERSHIP.md](docs/team/OWNERSHIP.md)
-- What each lane shipped, with proof commands and results:
-  [blake](docs/team/status/blake.md), [je](docs/team/status/je.md),
-  [cj](docs/team/status/cj.md), [nico](docs/team/status/nico.md)
+- Product requirements: [docs/PRD.md](docs/PRD.md)
+- Schema and wire contracts: [docs/SCHEMA.md](docs/SCHEMA.md)
 
 ## What it does
 
@@ -43,7 +38,7 @@ call `GET`/`POST /owner/**` on one port; the sandbox refuses everything else.
 `request_catering_quote`), so Claude or another assistant can ask The Kenmore questions
 and request a booking. Leads from it are stored with channel `mcp`.
 
-**The "find us" map (wp9, this branch).** The owner tells the agent where parking is. The
+**The "find us" map (not merged yet).** The owner tells the agent where parking is. The
 agent places the named garages on the demo site's own street map, and the widget draws
 those places as numbered pins on that map. The map is built from an OpenStreetMap extract
 of Kenmore Square (`scripts/demo_recording/build_map.py`, data (c) OpenStreetMap
@@ -221,7 +216,7 @@ These are checked by proofs, not just promised (PRD section 10).
 
 ## Measured
 
-Last recorded in the lane status files (the newest entries are from 16:35 ET).
+Measured on the box and on laptops during the build. The last measurements were taken at about 16:35 ET on 3 October.
 
 | What | Result |
 |---|---|
@@ -237,23 +232,26 @@ Last recorded in the lane status files (the newest entries are from 16:35 ET).
 Why `llama-server` and not Ollama for the Serve API: Ollama 0.35.1 crashed the CUDA kernel
 about one request in four on this model (16 crashes in an hour, each followed by an 8 to 9
 second reload). With flash attention off and 512 batches, `llama-server` had 0 crashes in
-120+ requests and generates 78 tok/s versus 44 through Ollama. Details in
-[the nico status file](docs/team/status/nico.md).
+120+ requests and generates 78 tok/s versus 44 through Ollama.
 
-## What was built, by lane
+## What is built
 
-| Lane | Built | Proof |
+| Component | What it does | Proof |
 |---|---|---|
-| Blake | Graph write side and seed; Serve API with the full intent pipeline (slots, cache, retrieval, one constrained model call, binder); actions and leads with rate limits; safety and steer; privacy proofs; end to end tests; fake model for laptops | `cd services/serve && uv run pytest` 354 passed; `uv run --project tests pytest tests/graph` 79 passed; `tests/e2e` 10 passed, 1 xfailed |
-| Je | Owner tools API: two credentials, approval-tier function, change engine for all ten actions, approve/reject/revert/verify, owner inbox (HTML and JSON), topics and gaps, special hours, publish with pre-warm, demo traffic seeding, one-command local stack | `cd services/owner && uv run pytest` 156 passed |
-| CJ | Widget shell, a component per golden surface, interaction (forms, cart, goal buttons), `embed.js` (about 2.6 kB), demo site built from the seed, metrics overlay and busy/error/offline states | `npm test` in `apps/widget` 67 passed; in `apps/demo-site` 5 passed |
-| Nico | Box checks, deploy scripts, model server, agent skill and instructions, sandboxed agent, egress policy, recovery, load test, MCP server, graph-growing heartbeat | `box/up.sh` ALL UP; `box/egress_demo.sh` 7 PASS; `services/mcp` `npm test` 10 passed; `agent/tests` `test_grow.py` 10 OK |
+| Graph and seed | Schema, label and edge registries, seed of The Kenmore (175 public nodes: 110 dishes, 13 menu sections, 15 FAQs, 4 services, hours and special hours, and more), publish into `kg_public` | `uv run --project tests pytest tests/graph` 79 passed |
+| Serve API | Full intent pipeline (slots, cache, retrieval, one constrained model call, binder), presets, actions and leads with rate limits, safety and steer rules, metrics | `cd services/serve && uv run pytest` 354 passed |
+| Owner tools API and inbox | Two credentials, approval-tier function, change engine for all ten actions, approve, reject, revert, verify, owner inbox (HTML and JSON), topics and gaps, special hours, publish with pre-warm, demo traffic seeding | `cd services/owner && uv run pytest` 156 passed |
+| Widget and demo site | A component per surface, forms, cart, goal buttons, `embed.js` (about 2.6 kB), demo site built from the seed, metrics overlay, busy, error and offline states | `npm test` 67 passed in `apps/widget`, 5 in `apps/demo-site` |
+| Agent | Skill, instructions and a heartbeat with three moves (ask, build, grow), meant to run every five minutes, run in an OpenShell sandbox with an egress policy | `agent/tests` 3 OK on the real APIs; `test_grow.py` 10 OK |
+| The box | Health checks, one-command deploy, recovery, model server, load test | `box/up.sh` ALL UP; `box/egress_demo.sh` 7 PASS |
+| MCP server | Five tools over the Serve API, text-only for now | `cd services/mcp && npm test` 10 passed |
+| Privacy proofs | Canary, permission check, end to end suite | `scripts/canary.py`, `scripts/permission_check.py`, `tests/e2e` 10 passed, 1 xfailed |
 
-## Not finished
+## Where it stands
 
-Taken from the status files; check them for anything newer.
+What is not finished, as of the last measurements above.
 
-- **The agent sandbox (`blake3`) was lost at 16:22** when `nemoclaw blake3 rebuild` failed.
+- **The agent sandbox was lost at 16:22** when a NemoClaw rebuild failed.
   `box/agent_install.sh` puts the skill, instructions and network rule back in one command
   once the sandbox is onboarded again. The two agent loops were proven in it at 16:20
   (move 1 in 5.8 s, owner reply in 8.3 s, move 2 in 10.6 s) before it went.
@@ -265,21 +263,20 @@ Taken from the status files; check them for anything newer.
 - **MCP on the box:** built and proven against the real Serve API on a laptop, text-only.
   Not deployed on the box, no MCP App element yet, no tunnel or Claude connector (a person
   has to add those).
-- **wp9 map and demo recording** (`demo/kenmore/map.*`, `MapList.tsx`, `scripts/demo_recording/`)
-  are on the `blake/wp9-parking-map-demo` branch and not merged. The widget's map component
+- **The map and the demo recording** (`demo/kenmore/map.*`, `MapList.tsx`, `scripts/demo_recording/`)
+  are on a separate branch and not merged. The widget's map component
   has no test of its own yet; the widget suite is still 67 tests.
 - No embedder on the box (no model downloads at the venue), so retrieval uses full-text
   search. `EMBED_BASE_URL` is empty.
-- JSON-LD ingest and the slot-masked cache from the lane plan (wp9 in
-  [lanes/blake.md](docs/team/lanes/blake.md)) were not started.
+- JSON-LD ingest of the site and the slot-masked cache were not started.
 
 ## Run it
 
-Needs Docker, `uv`, Node 22 and the GitHub CLI. On a laptop with no Docker, use the
+Needs Docker, `uv` and Node 22. On a laptop with no Docker, use the
 one-command stack below.
 
 ```bash
-make hooks env        # lane guard on push; .env from .env.example
+make env              # .env from .env.example
 make db-up db-check   # Postgres + pgvector on 127.0.0.1:54320; privacy check
 make fixtures-check   # seed and golden fixtures agree
 make seed             # load The Kenmore into the graph and publish (safe to re-run)
@@ -326,21 +323,6 @@ adds demo traffic and runs a stack on ports 8110, 8180 and 8181 with `CAC_AUTONO
 | `cd services/owner && uv run pytest` | 156 passed |
 | `cd apps/widget && npm test` | 67 passed |
 | `uv run --with pytest --with jsonschema pytest tools/fake_llm` | 49 passed |
-| `tools/lane-check` | PASS |
-
-## Team and lanes
-
-Four people each built one lane with their own coding agent. The one rule: change only
-files in your lane (`tools/lanes.conf`, enforced by `tools/lane-check` on every push), so
-branches could not conflict. Cross-lane needs went through request files in
-`docs/team/requests/`.
-
-| Person | Lane | Start prompt | Per-package prompts | Work packages |
-|---|---|---|---|---|
-| Blake | Graph, pipeline, integration | [prompts/blake.md](docs/team/prompts/blake.md) | [blake-packages.md](docs/team/prompts/blake-packages.md) | [lanes/blake.md](docs/team/lanes/blake.md) |
-| Je | Owner tools API and inbox | [prompts/je.md](docs/team/prompts/je.md) | [je-packages.md](docs/team/prompts/je-packages.md) | [lanes/je.md](docs/team/lanes/je.md) |
-| CJ | Widget, demo site, overlay | [prompts/cj.md](docs/team/prompts/cj.md) | [cj-packages.md](docs/team/prompts/cj-packages.md) | [lanes/cj.md](docs/team/lanes/cj.md) |
-| Nico | The box, the agent, MCP | [prompts/nico.md](docs/team/prompts/nico.md) | [nico-packages.md](docs/team/prompts/nico-packages.md) | [lanes/nico.md](docs/team/lanes/nico.md) |
 
 ## Layout
 
@@ -358,6 +340,6 @@ agent/              the NemoClaw agent: skill, instructions, heartbeat, graph gr
 box/  bench/        box scripts and egress policy; selection and load benchmarks
 scripts/            seed, privacy proofs, demo recording and map builder
 tests/              graph and end to end tests (their own uv project)
-tools/              lane-check, fake_llm
-docs/team/          ownership, lane plans, start prompts, status, requests
+tools/              fake_llm, the stand-in model for laptops
+docs/               product requirements, schema contracts, research
 ```
