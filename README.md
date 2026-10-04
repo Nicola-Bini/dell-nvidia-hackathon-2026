@@ -49,28 +49,158 @@ those places as numbered pins on that map. The map is built from an OpenStreetMa
 of Kenmore Square (`scripts/demo_recording/build_map.py`, data (c) OpenStreetMap
 contributors, ODbL).
 
-## How it fits together
+## Architecture
+
+### The system
 
 ```
- visitor on the demo site                    owner (inbox, owner channel)
-        |  embed.js -> widget iframe                |
-        v                                           v
-  Serve API :8080 (box 8082) <---------- Owner tools API + inbox :8081
-  role cac_serve, read-only on              role cac_owner, change engine,
-  published graph, writes leads             approve / reject / revert / verify
-        |                                           ^
-        v                                           |  GET/POST /owner/** only
-  local model (llama-server :11436,           NemoClaw agent (Hermes) in an
-  qwen3.6:35b) via LLM_BASE_URL               OpenShell sandbox, heartbeat
-        |                                           |
-        +--------------- Postgres + pgvector -------+
-                          (kg, ops schemas)
-  MCP server :8090 -> Serve API (channel mcp, loopback only)
+  THE BOX (Dell Pro Max GB10). Nothing on it calls a cloud.
+
+  visitor's browser    customer's assistant    owner (inbox, channel)    NemoClaw agent
+  demo site + widget   (Claude, ...)                                     (OpenShell sandbox)
+        |                    | tunnel: /mcp only         |                       |
+        |                    v                           |                       |
+        |             +--------------+                   |                       |
+        |             | MCP server   |                   | owner token           | agent token
+        |             | :8090        |                   | approve, reject,      | GET/POST
+        |             +------+-------+                   | revert, verify        | /owner/** only
+        |                    | loopback, channel=mcp     |                       |
+        v                    v                           v                       v
+  +-------------------------------------+      +-------------------------------------+
+  | Serve API   :8080 (box 8082)        |      | Owner tools API + inbox   :8081     |
+  | role cac_serve                      |<-----| role cac_owner                      |
+  | reads kg_public, inserts log+leads  |      | change engine, approval tiers,      |
+  +------+----------------------+-------+      | publish + pre-warm                  |
+         |                      |              +----------------+--------------------+
+         | one constrained      | SQL                           | SQL
+         | completion           |                               |
+         v                      v                               v
+  +-------------+     +----------------------------------------------------------+
+  | local model |     | Postgres + pgvector                                      |
+  | llama-server|     |  kg         full graph, drafts, goals, gaps (owner only) |
+  | :11436      |     |  kg_public  published projection (serve reads this)      |
+  | qwen3.6:35b |     |  ops        intent log, cache, leads                     |
+  +-------------+     +----------------------------------------------------------+
 ```
 
-Python 3.12, FastAPI, psycopg 3 with raw SQL; Vite, React, TypeScript; Node 22. Models are
-reached only through `LLM_BASE_URL` and `EMBED_BASE_URL`, and the Serve API refuses to start
-unless the model host is local.
+The arrow from the Owner tools API to the Serve API is the pre-warm: after every publish it
+replays the top 20 logged intents through `/v1/intent`, so the first visitor after a change
+hits a warm cache.
+
+Two things never cross a line on this picture. The Serve API has no grant on `kg`, so a
+visitor path cannot reach a goal, a customer or a lead. The agent's sandbox reaches the Owner
+tools API and nothing else: not the database, not the Serve API, not the model server, not
+the internet.
+
+| Process | Stack | Port | Database role | Reachable from |
+|---|---|---|---|---|
+| Serve API | Python 3.12, FastAPI, psycopg 3, raw SQL | 8080 on laptops, 8082 on the box | `cac_serve` | Visitors; the MCP server on loopback |
+| Owner tools API and inbox | Python, FastAPI | 8081 | `cac_owner` | The sandboxed agent and the owner's browser. Never tunnelled |
+| MCP server | Node 22 | 8090 | none | The tunnel, `/mcp` only |
+| Widget, `embed.js` | Vite, React, TypeScript | served by the Serve API at `/widget/` and `/embed.js` | none | A browser iframe |
+| Postgres + pgvector | Docker (laptops can use an embedded one) | 127.0.0.1 | none | Local processes |
+| Model server | `llama-server` on the box (Ollama crashed on this model); `tools/fake_llm` on laptops | 11436 on the box, 8000 on laptops | none | The Serve API |
+| Agent | NemoClaw with the Hermes runtime, in an OpenShell sandbox | none | none | Owner channel |
+
+There is no ORM on the Serve API: `cac_serve` can insert into the log and lead tables but not
+read them, and an ORM's `RETURNING` fails without read permission.
+
+### A visitor question
+
+The model chooses. Code writes every word and number the visitor sees.
+
+```
+text ─▶ validate ─▶ normalize + ─▶ cache lookup ──hit──────────────────────┐
+        1–300 chars   slots         (hash, slots, graph version)           │
+                      (dates,            │ miss                            │
+                       party size)       ▼                                 ▼
+                              retrieve: entry nodes + fixed        re-bind the cached
+                              expansion templates (no model-       selection against the
+                              written queries)                     current graph
+                                     │                                     │
+                                     ▼                                     │
+                              build a JSON schema from what was            │
+                              retrieved: only these components and         │
+                              these ids are legal                          │
+                                     │                                     │
+                                     ▼                                     │
+                              ONE model call, no tools, constrained        │
+                              output, validated, one retry                 │
+                                     │                                     │
+                                     ▼                                     ▼
+                              binder: pull real facts from the ──▶ Surface ──▶ log every request
+                              graph snapshot, add badges, drop      (views of      (kind, gap_topic;
+                              anything unsafe                       components)    never raw text out)
+```
+
+- A text that only names a preset ("See the menu", a nav label) skips the model entirely.
+- Safety is in the binder, not the prompt. An unverified diet is never a badge, an allergen
+  question never gets a dish list, and an answer that binds to nothing is served as a gap.
+- When the graph has no answer, the surface says so and the request is logged as a gap with a
+  topic. The model never writes visitor-facing text.
+- If the model is slow or down, the visitor gets an ordinary "busy" surface with a way out.
+  The Serve API warms the model at start-up and caps concurrent model calls.
+
+### The publish boundary
+
+```
+ kg  (owner and agent write here)            kg_public  (the only thing visitors read)
+ ┌───────────────────────────────┐  publish() ┌───────────────────────────────┐
+ │ public, private, draft nodes  │ ─────────▶ │ approved public nodes only,   │
+ │ goals, gaps, customers,       │  copies an │ and only props the label      │
+ │ proposals, notes              │  allowlist │ registry names                │
+ └───────────────────────────────┘            └───────────────────────────────┘
+```
+
+Nothing is public until someone marks it so and the owner approves it. A private prop left on
+a public node (a supplier, a margin) is dropped at publish. A publish takes effect on the next
+request, with no restart. The label registry, the edge registry and the component catalog are
+rows in the database, so the agent can add a node type, an edge type or a new element without a
+migration.
+
+### The agent's loop
+
+Every five minutes the agent does one explicit move. Code chooses and checks; the model only
+judges. (A free-form "do move 1" turn wandered for 79 seconds and tried hand-built changes;
+explicit single-command prompts take 6 to 11 seconds.)
+
+| Move | What happens |
+|---|---|
+| 1. Ask | Read `/owner/gaps`, put the most-asked unanswered topic to the owner on the owner channel |
+| 2. Build | A topic a plan covers (gift cards) becomes a graph change: a new type, nodes, and a request form |
+| 3. Grow | `next-task` picks one task from the live graph and topics, in rotation: `classify` (tag eight nodes of one type), `topics`, `classify`, `invent` (a type no element shows yet). The model returns a change list; code orders it, drops anything ever proposed before, and posts it |
+
+Each change goes to `POST /owner/changes`. The API, not the agent, assigns the approval tier:
+
+| Tier | Meaning |
+|---|---|
+| `auto` | Applied and published now |
+| `one_tap` | Written to the private graph as a draft; goes public when the owner approves |
+| `locked` | Refused with a reason, and recorded |
+
+`CAC_AUTONOMY` (`cautious`, `balanced`, `free`) moves changes between `auto` and `one_tap`.
+In every mode, marking anything `verified_by_owner` and touching goals, customers, leads or
+raw visitor text are locked: only the owner credential can verify, and only the owner
+credential can approve, reject or revert. When the owner answers a gap, the answer is stored
+in their words, published, and served as `Answer` with the verified mark. Every change
+records its `before`, so a revert restores the old text.
+
+### The assistant path
+
+The MCP server holds no database credentials. Each tool is a call to the Serve API on the
+same machine with `X-CAC-Channel: mcp`. The Serve API takes the channel from the caller, never
+from the request body, and ignores it when a forwarding header is present, so traffic through
+a tunnel cannot pass as `mcp` or `prewarm`. Each tool call is its own anonymous session, leads
+from it are capped at 10 an hour, and the log records tool, outcome and milliseconds only.
+
+### What the contracts pin down
+
+The wire formats (selection, slots, binder, surface, the three APIs), the DDL, the label and
+edge registries and the component catalog are in [docs/SCHEMA.md](docs/SCHEMA.md). The
+privacy rules and the product reasoning are in [docs/PRD.md](docs/PRD.md) (section 10 for
+privacy). Models are reached only through `LLM_BASE_URL` and `EMBED_BASE_URL`, and the Serve
+API refuses to start unless the model host is local. One business per box: every process reads
+`CAC_BUSINESS_ID` and no request carries a business id.
 
 ## Privacy, enforced
 
